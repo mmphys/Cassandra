@@ -69,6 +69,10 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-z&apos;Is this my title?&apos;"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "data/B* -wc -qc -sc -r101 -lPass1/B_Low"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
