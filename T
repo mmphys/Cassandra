@@ -7,8 +7,8 @@ RESULTSROOT="$HOME/src/Cassandra/Results"
 #SLAC_TYPE=0  #Don't include any SLAC data
 SLAC_TYPE=NNPDF
 
-#DATASET=Low
-DATASET=High
+DATASET=Low
+#DATASET=High
 
 TARGET=Proton
 #TARGET=Deuteron

@@ -18,11 +18,11 @@ namespace Cassandra
     Bin( double central_value = 0 ) { central = central_value; }
   public:
     inline void Add( double x_coord, double y_coord, double error_y )
-      {
-	x.push_back( x_coord );
-	y.push_back( y_coord );
-	ey.push_back( error_y );
-      }
+    {
+      x.push_back( x_coord );
+      y.push_back( y_coord );
+      ey.push_back( error_y );
+    }
   };
 
   class Model
@@ -82,6 +82,7 @@ namespace Cassandra
       BCDMS, SLAC, JLAB, BoNuS, Unknown };
 
   protected:
+    Model m_ht;	// Which model to run
     DataSet     * m_DataSets[Unknown];
     ModelParams & m_Params;
     NodeSortFunc const m_TwiggySort;
@@ -90,8 +91,10 @@ namespace Cassandra
     const double m_XCutoff;
     const char * const m_pszPDFSet;
     const double m_dQChartScale;
-    // Choose which model to run here
-    Model m_ht;
+    const double m_xBinSize;
+    const double m_Q2BinSize;
+
+    const char * m_pszTarget;
 
     // Stats for the whole dataset ... don't change unless we park
     int         m_NDat; // Total number of data points
@@ -101,32 +104,32 @@ namespace Cassandra
     double      m_Q2MinOverall, m_Q2MaxOverall;
 
   public:
-      DataManager(ModelParams & mp,
-                  NodeSortFunc TwiggySort, int NumOutliers, const char * pszModelPrefix,
-                  double XCutoff, const char * pszPDFSet, double dQChartScale,
-                  int iModelNum, bool bAdditive, int iNumReplicas );
+    DataManager(ModelParams & mp, int iNumReplicas, NodeSortFunc TwiggySort,
+		int NumOutliers, const char * pszModelPrefix, double XCutoff,
+		int iModelNum, bool bAdditive, const char * pszDefaultPDFSet,
+		double dQChartScale, double xBinSize, double Q2BinSize );
     ~DataManager();
     DataSet & operator[]( NodeType nt ) { return * m_DataSets[nt]; }
 
   protected:
-    double BinnedValue( double d, double dBinSize ) const;
+    double SeriesValue( const DataNode &n, int iSeries ) const;
+    double SeriesValueBinned( const DataNode &n, int iSeries ) const;
     Int_t ValidateMatrices( const TMatrixDSym &MData,
 			    const TMatrixDSym &MTheory,
 			    const std::vector<DataNode *> & vNodes ) const;
 
   public:
     size_t size(void) const noexcept;
-    void PlotHT( const DataSet &ds, const std::string &sNamePrefix,
+    void PlotHT( const DataSet &ds,
 		 const std::string &sFileNameSeq, const std::string &sCut,
 		 double * HTMean, const TMatrixDSym & MTheoryCovar ) const;
     void CreateGraphs( const TMatrixDSym & MData, const TMatrixDSym & MTheory,
 		       const std::vector<DataNode *> & vNodes, double dNeff,
-		       const std::string &sNamePrefix,
+		       const std::string &sNamePrefix, 
 		       const std::string &sFileNameSeq,
 		       const std::string &sCut,
 		       const std::string &sCounts,
-		       double * HTMean,
-		       double xBinSize, double Q2BinSize ) const;
+		       double * HTMean ) const;
     void PlotCorrelation( const TMatrixDSym & M, double dNeff,
 			  const std::string & sChartTitle,
 			  const std::string &sFileName,
@@ -134,15 +137,13 @@ namespace Cassandra
 			  const std::string &sCounts ) const;
     void PlotDiagonals( const TMatrixDSym & MData, const TMatrixDSym & MTheory,
 			const std::vector<DataNode *> & vNodes, double dNeff,
-			const std::string &sNamePrefix,
+			const std::string &sNamePrefix, 
 			const std::string &sFileNameSeq,
 			const std::string &sCut,
 			const std::string &sCounts ) const;
     bool LoadHTModel( std::vector<HT> &ht, int iModelNum ) const;
-    bool MakeOnePrediction(DataSet & ds,
-			   const char * pszOutFilePrefix, CutChi & cc,
-			   size_t SampleSize, bool bShowCut,
-			   double xBinSize, double Q2BinSize);
+    bool MakeOnePrediction( DataSet & ds, const char * pszOutFilePrefix,
+			    CutChi & cc, size_t SampleSize, bool bShowCut );
     bool LoadData( const char * fileName );
     void ApplyCutoff( double W2, double Q2, bool bStrictCut,
 		      size_t SampleSize, bool bShowCut );
@@ -153,8 +154,7 @@ namespace Cassandra
 			 bool bStrictFirstCut,
 			 int SampleSize, bool bDumpOnly, bool bShowCut,
 			 double W2Min, double W2Max,
-			 double Q2Min, double Q2Max, int NumSteps,
-			 double xBinSize, double Q2BinSize );
+			 double Q2Min, double Q2Max, int NumSteps );
   };
 }
 #endif

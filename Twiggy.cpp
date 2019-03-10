@@ -48,12 +48,13 @@ const char Cassandra::DataManager::m_szPDFSuffix[] = ".pdfwt";
 const char Cassandra::DataManager::m_szPDFHeader[] = "Cut Strict X W**2 Q**2 Ndat Neff";
 const char Cassandra::DataManager::m_szOptionStdDev[] = "s";
 
-Cassandra::DataManager::DataManager( ModelParams & mp,
+Cassandra::DataManager::DataManager(ModelParams & mp, int iNumReplicas,
 				    NodeSortFunc TwiggySort, int NumOutliers, const char * pszModelPrefix,
-				    double XCutoff, const char * pszPDFSet, double dQChartScale, int iModelNum, bool bAdditive, int iNumReplicas )
-  : m_Params{ mp }, m_TwiggySort { TwiggySort }, m_NumOutliers { NumOutliers },
-    m_pszModelPrefix{ pszModelPrefix }, m_XCutoff{ XCutoff }, m_pszPDFSet{ pszPDFSet }, m_dQChartScale{ dQChartScale },
-    m_ht( iModelNum, bAdditive )
+				    double XCutoff, int iModelNum, bool bAdditive, const char * pszPDFSet,
+				    double dQChartScale, double xBinSize, double Q2BinSize )
+  : m_ht( iModelNum, bAdditive ), m_Params{ mp }, m_TwiggySort { TwiggySort }, m_NumOutliers { NumOutliers },
+    m_pszModelPrefix{ pszModelPrefix }, m_XCutoff{ XCutoff },
+    m_pszPDFSet{ pszPDFSet }, m_dQChartScale{ dQChartScale }, m_xBinSize{ xBinSize }, m_Q2BinSize{ Q2BinSize }
 {
   m_DataSets[BCDMS] = new Cassandra::BCDMSSet(mp, iNumReplicas);
   m_DataSets[JLAB] = new Cassandra::JLABSet(mp, iNumReplicas);
@@ -75,11 +76,55 @@ size_t Cassandra::DataManager::size(void) const noexcept
   return sz;
 }
 
-double Cassandra::DataManager::BinnedValue( double d, double dBinSize ) const
+double Cassandra::DataManager::SeriesValue( const DataNode &n, int iSeries ) const
 {
-  if( dBinSize != 0. )
-    d = ( ( int ) ( d / dBinSize + 0.5 ) ) * dBinSize;
-  return d;
+  double dVal;
+  switch( iSeries )
+    {
+    case 0:
+      dVal = n.m_x;
+      break;
+    case 1:
+      dVal = n.m_Q2;
+      break;
+    default:
+      dVal = 0;
+    }
+  return dVal;
+}
+
+double Cassandra::DataManager::SeriesValueBinned( const DataNode &n, int iSeries ) const
+{
+  double dVal = SeriesValue( n, iSeries );
+  switch( iSeries )
+    {
+    case 0:
+      if( dVal < 0.085 )
+	dVal = 0.07;
+      else if( dVal < 0.12 )
+	dVal = 0.1;
+      else if( dVal < 0.16 )
+	dVal = 0.14;
+      else if( dVal < 0.20125 )
+	dVal = 0.18;
+      else if( dVal < 0.25 )
+	dVal = 0.225;
+      else if( dVal < 0.3125 )
+	dVal = 0.275;
+      else
+	dVal = ( ( int ) ( ( dVal - 0.35 ) / 0.1 ) ) * 0.1 + 0.35;
+      break;
+    case 1:
+      if( m_Q2BinSize != 0. )
+	{
+	  double dBinSize = m_Q2BinSize;
+	  if( ( int ) ( dVal / dBinSize ) < 5 )
+	    dBinSize /=2;
+	  dVal = ( ( int ) ( dVal / dBinSize ) ) * dBinSize;
+	}
+      break;
+    }
+  return dVal;
 }
 
 bool Cassandra::DataManager::InitPrediction( const char * pszOutFilePrefix, int iNumReplicas )
@@ -159,7 +204,7 @@ Int_t Cassandra::DataManager::ValidateMatrices( const TMatrixDSym &MData, const 
   return ret_val;
 }
 
-void Cassandra::DataManager::PlotHT( const DataSet &ds, const std::string &sNamePrefix,
+void Cassandra::DataManager::PlotHT( const DataSet &ds,
 				     const std::string &sFileNameSeq, const std::string &sCut,
 				     double * HTMean, const TMatrixDSym & MTheoryCovar ) const
 {
@@ -167,7 +212,7 @@ void Cassandra::DataManager::PlotHT( const DataSet &ds, const std::string &sName
   sFileName.append( "_HT.pdf" );
 
   std::string sTitle( "Higher Twist " );
-  sTitle.append( sNamePrefix );
+  sTitle.append( ds.Name() );
   std::string sTitleX( "X (" );
   sTitleX.append( std::to_string( ds.CutSize() ) );
   sTitleX.append( " data points, " );
@@ -178,17 +223,17 @@ void Cassandra::DataManager::PlotHT( const DataSet &ds, const std::string &sName
   std::vector<double> x_vals;
   for( DataNode * p : ds.m_v )
     {
-      unsigned int i = 0;
+      size_t i = 0;
       while( i < x_vals.size() && x_vals[i] != p->m_x )
 	i++;
       if( i == x_vals.size() )
 	x_vals.push_back( p->m_x );
     }
   std::sort(x_vals.begin(), x_vals.end());
-  int iNumX = x_vals.size();
+  int iNumX = ( int ) x_vals.size();
+  double ex[iNumX];
 
   // Calculate error in each x ... by using half distance to nearest neighbour
-  /*double ex[iNumX];
   if( iNumX == 1 )
     ex[0] = 0.;
   else
@@ -205,7 +250,7 @@ void Cassandra::DataManager::PlotHT( const DataSet &ds, const std::string &sName
 	}
       // Last bin
       ex[i] = ( x_vals[i] - x_vals[i - 1] ) / 2;
-    }*/
+    }
 
   // Now calculate the mean of the y-values and the error in the y-values
   int    iCount[iNumX];
@@ -217,9 +262,9 @@ void Cassandra::DataManager::PlotHT( const DataSet &ds, const std::string &sName
       y[j] = 0;
       ey[j] = 0;
     }
-  for( unsigned int i = 0 ; i < ds.CutSize() ; i++ )
+  for( int i = 0 ; i < ( int ) ds.CutSize() ; i++ )
     {
-      unsigned int j = 0;
+      int j = 0;
       while( x_vals[j] != ds.m_v[i]->m_x )
 	j++;
       iCount[j]++;
@@ -277,7 +322,256 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
 					   const std::vector<DataNode *> & vNodes, double /*dNeff*/,
 					   const std::string &sNamePrefix, const std::string &sFileNameSeq,
 					   const std::string &sCut, const std::string &/*sCounts*/,
-					   double * HTMean, double xBinSize, double Q2BinSize ) const
+					   double * HTMean ) const
+{
+  Int_t MSize = ValidateMatrices( MData, MTheory, vNodes );
+  if( MSize == 0 )
+    return;
+
+  // c=0 : x-axis=x,  series=Q2
+  // c=1 : x-axis=Q2, series=x
+  std::vector<double> Unbinned[2];
+  std::vector<double> Binned[2];
+  bool bSLACPresent = false;
+  for( int c = 0 ; c < 2 ; c++ )
+    {
+      // Make a list of the x-axis values in the data
+      for( DataNode * p : vNodes )
+	{
+	  // Do the unbinned, x_axis values
+	  size_t i = 0;
+	  double thisVal;
+	  if( p->Type() == pszBCDMS )
+	    thisVal = SeriesValue( *p, c );
+	  else
+	    thisVal = SeriesValueBinned( *p, c );
+	  while( i < Unbinned[c].size() && Unbinned[c][i] != thisVal )
+	    i++;
+	  if( i == Unbinned[c].size() )
+	    Unbinned[c].push_back( thisVal );
+	  // Do the binned, x_axis values
+	  i = 0;
+	  thisVal = SeriesValueBinned( *p, c );
+	  while( i < Binned[c].size() && Binned[c][i] != thisVal )
+	    i++;
+	  if( i == Binned[c].size() )
+	    Binned[c].push_back( thisVal );
+	  // Is there any SLAC data present?
+	  if( p->Type() == pszSLAC )
+	    bSLACPresent = true;
+	}
+      std::sort( Unbinned[c].begin(), Unbinned[c].end() );
+      std::sort( Binned[c].begin(), Binned[c].end() );
+    }
+
+  // Create each chart
+  for( int c = 0 ; c < 2 ; c++ )
+    {
+      std::vector<double> & xb = Binned[c];
+      std::vector<double> & xu = Unbinned[c];
+      std::vector<double> & Series = Binned[1 - c];
+      const int iNumSeries = ( c == 0 && Series.size() > 11 ) ? 11 : ( int ) Series.size();
+
+      std::string sFileName( sFileNameSeq );
+      sFileName.append( "_F2DTvs" );
+      sFileName.append( ( c == 0 ) ? "X.pdf" : "Q2.pdf" );
+
+      std::string sTitle( "F2 Data/Theory vs " );
+      sTitle.append( ( c == 0 ) ? "X, " : "Q**2, " );
+      sTitle.append( sNamePrefix );
+      sTitle.append( ( c == 0 ) ? "; X (" : "; Q**2 / GeV**2 (" );
+      sTitle.append( std::to_string( MSize ) );
+      sTitle.append( " data points, " );
+      sTitle.append( sCut );
+      sTitle.append( "); F2 (b&w=LT, colour=HT)" );
+
+      LOG( Often, "Creating " << sFileName << endl );
+
+      // Create one graph per bin, with and without HT
+      auto mgLegend = new TMultiGraph();    // Add graphs that appear in legend here
+      auto mgNoLegend = new TMultiGraph();  // Add graphs that do not appear in legend here
+      mgLegend->SetTitle( sTitle.c_str() );
+      const double dScale[] = { 4.8, 3., 2., 1.5, 1.2 };
+      const double dScaleSize = sizeof( dScale ) / sizeof( double );
+      for( int iSeries = 0 ; iSeries < iNumSeries ; iSeries++ )
+	{
+	  double yScale;
+	  if( c== 0 )
+	    yScale = 1 << (iNumSeries - 1 - iSeries);
+	  else
+	    yScale = ( iSeries < dScaleSize ) ? dScale[iSeries] : 1.;
+	  // Unbinned
+	  int    iUCount[xu.size()];
+	  double F2D[xu.size()];
+	  double F2DVar[xu.size()];
+	  for( size_t j = 0 ; j < xu.size() ; j++ )
+	    {
+	      iUCount[j] = 0;
+	      F2D[j]     = 0;
+	      F2DVar[j]  = 0;
+	    }
+	  // Binned
+	  int    iBCount[xb.size()];
+	  double F2T[xb.size()];
+	  double F2THT[xb.size()];
+	  double F2THTVar[xb.size()];
+	  for( size_t j = 0 ; j < xb.size() ; j++ )
+	    {
+	      iBCount[j]  = 0;
+	      F2T[j]      = 0;
+	      F2THT[j]    = 0;
+	      F2THTVar[j] = 0;
+	    }
+	  //LOG( Rarely, "check" << endl );
+	  int iSeriesCount = 0;
+	  for( int i = 0 ; i < MSize ; i++ )
+	    {
+	      if( !bSLACPresent || vNodes[i]->Type() != pszJLAB )
+		{
+		  // Only include data points in this series
+		  double dNodeSeries = SeriesValueBinned( * vNodes[i], 1 - c );
+		  if( dNodeSeries == Series[iSeries]
+		     || (iSeries == iNumSeries - 1 && dNodeSeries > Series[iSeries]) )
+		    {
+		      iSeriesCount++;
+		      // Unbinned
+		      double dNodeAxis;
+		      if( vNodes[i]->Type() == pszBCDMS )
+			dNodeAxis = SeriesValue( * vNodes[i], c );
+		      else
+			dNodeAxis = SeriesValueBinned( * vNodes[i], c );
+		      size_t j = 0;
+		      while( j < xu.size() && xu[j] != dNodeAxis )
+			j++;
+		      F2D[j]      += vNodes[i]->ScaledValue();
+		      F2DVar[j]   += MData[i][i];
+		      iUCount[j]++;
+		      // Binned
+		      dNodeAxis = SeriesValueBinned( * vNodes[i], c );
+		      j = 0;
+		      while( j < xb.size() && xb[j] != dNodeAxis )
+			j++;
+		      double dF2T  = vNodes[i]->m_Theory[0];
+		      F2T[j]      += dF2T;
+		      F2THT[j]    += dF2T + HTMean[i];
+		      F2THTVar[j] += MTheory[i][i];
+		      iBCount[j]++;
+		    }
+		}
+	    }
+	  //LOG( Rarely, "Series " << iSeries << ": Making graph values" << endl );
+	  // Unbinned graphs
+	  double g_xu[xu.size()];
+	  double g_F2D[xu.size()];
+	  double g_F2DErr[xu.size()];
+	  int g_UCount = 0;
+	  for( size_t j = 0 ; j < xu.size() ; j++ )
+	    {
+	      if( iUCount[j] > 0 )
+		{
+		  // Now add this to the graphs, plotting error = sqrt( var )
+		  g_xu[g_UCount]     = xu[j];
+		  g_F2D[g_UCount]    = F2D[j] / iUCount[j] * yScale;
+		  g_F2DErr[g_UCount] = sqrt( F2DVar[j] / iUCount[j] ) * yScale;
+		  g_UCount++;
+		}
+	    }
+	  // Binned graphs
+	  double g_xb[xb.size()];
+	  double g_F2T[xb.size()];
+	  double g_F2THT[xb.size()];
+	  double g_F2THTErr[xb.size()];
+	  int g_BCount = 0;
+	  for( size_t j = 0 ; j < xb.size() ; j++ )
+	    {
+	      if( iBCount[j] > 0 )
+		{
+		  // Now add this to the graphs, plotting error = sqrt( var )
+		  g_xb[g_BCount]       = xb[j];
+		  g_F2T[g_BCount]      = F2T[j] / iBCount[j] * yScale;
+		  g_F2THT[g_BCount]    = F2THT[j] / iBCount[j] * yScale;
+		  g_F2THTErr[g_BCount] = sqrt( F2THTVar[j] / iBCount[j] ) * yScale;
+		  g_BCount++;
+		}
+	    }
+
+	  //Make series name
+	  std::stringstream ssTitle;
+	  int iSeriesPrecision;
+	  const char * pszSeries;
+	  if( c == 0 )
+	    {
+	      static const char szSeriesQ2[] = "Q2";
+	      pszSeries = szSeriesQ2;
+	      iSeriesPrecision = 1;
+	    }
+	  else
+	    {
+	      static const char szSeriesX[] = "x";
+	      pszSeries = szSeriesX;
+	      iSeriesPrecision = 2;
+	    }
+	  static const char szCompGE[] = ">=";
+	  const char * pszComp = &szCompGE[1];
+	  if( iSeries == iNumSeries - 1 && iNumSeries != ( int ) Series.size() )
+	    pszComp--;
+	  ssTitle << pszSeries << pszComp << fixed << setprecision( iSeriesPrecision ) << Series[iSeries];
+	  if( iSeriesPrecision != 1 )
+	    ssTitle << setprecision(1);
+	  ssTitle << ", x" <<  yScale;
+
+	  // Make the F2T Plot
+	  TGraph * g = new TGraph( g_BCount, g_xb, g_F2T );
+	  g->SetLineStyle( 7 );
+	  mgNoLegend->Add( g, "" );
+
+	  // Make the F2THT Plot
+	  //ge = new TGraph( g_Count, g_x, g_F2THT );
+	  auto ge = new TGraphErrors( g_BCount, g_xb, g_F2THT, nullptr, g_F2THTErr );
+	  int iColor = iSeries % 8 + 2;
+	  ge->SetLineColor( iColor );
+	  ge->SetMarkerColor( iColor );
+	  ge->SetFillColor( 29 );
+	  ge->SetFillStyle( 3002 );
+	  ge->SetTitle( ssTitle.str().c_str() );
+	  mgLegend->Add( ge, "" );
+
+	  // Make the F2D Plot
+	  ge = new TGraphErrors( g_UCount, g_xu, g_F2D, nullptr, g_F2DErr );
+	  ge->SetMarkerStyle( kOpenCircle );
+	  ge->SetMarkerSize( 0.45 );
+	  //ge->SetMarkerColor( iColor );
+	  ge->SetMarkerColor( kBlack );
+	  mgNoLegend->Add( ge, "P" );
+	}
+      //LOG( Rarely, "Printing graphs" << endl );
+      TCanvas *c1 = new TCanvas("c1","Unused title - was ss1",200,10,700,500);
+      c1->SetGrid();
+      c1->GetFrame()->SetBorderSize(12);
+      if( c == 1 )
+	c1->SetLogx();
+      c1->SetLogy();
+      mgLegend->Draw( "A3 L" );
+      TLegend * pLeg = c1->BuildLegend( 0.78, 0.71, 0.9, 0.94 );
+      mgNoLegend->Draw("L");
+      //if( pLeg ) pLeg->SetNColumns( 2 );
+      auto OldErrLvl = gErrorIgnoreLevel;
+      gErrorIgnoreLevel = kWarning;
+      c1->Print(sFileName.c_str());
+      gErrorIgnoreLevel = OldErrLvl;
+      delete mgNoLegend;
+      delete mgLegend;
+      if( pLeg )
+	delete pLeg;
+      delete c1;
+    }
+}
+
+/*void Cassandra::DataManager::CreateGraphsOld( const TMatrixDSym & MData, const TMatrixDSym & MTheory,
+					      const std::vector<DataNode *> & vNodes, double dNeff,
+					      const std::string &sNamePrefix, const std::string &sFileNameSeq,
+					      const std::string &sCut, const std::string &sCounts,
+					      double * HTMean, double xBinSize, double Q2BinSize ) const
 {
   Int_t MSize = ValidateMatrices( MData, MTheory, vNodes );
   if( MSize == 0 )
@@ -292,7 +586,7 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
       // Make a list of the x-axis values in the data
       for( DataNode * p : vNodes )
 	{
-	  unsigned int i = 0;
+	  int i = 0;
 	  double thisVal;
 	  if( c == 0 )
 	    thisVal = BinnedValue( p->m_x, xBinSize );
@@ -330,7 +624,7 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
   for( int c = 0 ; c < 2 ; c++ )
     {
       std::vector<double> &x = x_axis[c];
-      //std::vector<double> &ex = x_axis_error[c];
+      std::vector<double> &ex = x_axis_error[c];
       std::vector<double> &Series = x_axis[1 - c];
       // Limit the number of Q**2 series
       int iMaxSeries = Series.size();
@@ -360,15 +654,15 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
       double yScale = ( iMaxSeries + 1 ) * 0.5;
       for( int iSeries = iMaxSeries - 1 ; iSeries >= 0 ; iSeries--, yScale -= 0.5 )
 	{
-	  //LOG( Rarely, "Series " << iSeries << ": Making means and error for "
-	       //<< MSize << " data points using " << x.size() << " bins" <<endl);
+	  //LOG( Rarely, "Series " << iSeries << ": Making means and error for " \
+	       << MSize << " data points using " << x.size() << " bins" <<endl);
 	  // Now calculate the mean and error in F2, with and without the twist
 	  int    iCount[x.size()];
 	  double F2DT[x.size()];
 	  double F2DTVar[x.size()];
 	  double F2DTHT[x.size()];
 	  double F2DTHTVar[x.size()];
-	  for( unsigned int j = 0 ; j < x.size() ; j++ )
+	  for( int j = 0 ; j < x.size() ; j++ )
 	    {
 	      iCount[j]    = 0;
 	      F2DT[j]      = 0;
@@ -387,7 +681,7 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
 	      else
 		dNodeSeries = BinnedValue( vNodes[i]->m_Q2, Q2BinSize );
 	      //LOG( Rarely, iSeries << ": data point " << i << " is Series " << dNodeSeries << endl );
-	      if( dNodeSeries == Series[iSeries] || ( iSeries == iMaxSeries-1 && dNodeSeries > Series[iSeries] ) )
+	      if( dNodeSeries == Series[iSeries] || iSeries == iMaxSeries-1 && dNodeSeries > Series[iSeries] )
 		{
 		  iSeriesCount++;
 		  // Find bin for this x-axis value
@@ -396,7 +690,7 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
 		    dNodeAxis = BinnedValue( vNodes[i]->m_x, xBinSize );
 		  else
 		    dNodeAxis = BinnedValue( vNodes[i]->m_Q2, Q2BinSize );
-		  unsigned int j = 0;
+		  int j = 0;
 		  while( j < x.size() && x[j] != dNodeAxis )
 		    j++;
 		  if( j == x.size() )
@@ -431,13 +725,13 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
 	  //LOG( Rarely, "Series " << iSeries << ": Making graph values" << endl );
 	  // Only graph bins with values
 	  double g_x[x.size()];
-	  //double g_xErr[x.size()];
+	  double g_xErr[x.size()];
 	  double g_F2DT[x.size()];
 	  double g_F2DTErr[x.size()];
 	  double g_F2DTHT[x.size()];
 	  double g_F2DTHTErr[x.size()];
 	  int g_Count = 0;
-	  for( unsigned int j = 0 ; j < x.size() ; j++ )
+	  for( int j = 0 ; j < x.size() ; j++ )
 	    {
 	      if( iCount[j] > 0 )
 		{
@@ -449,7 +743,7 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
 		  F2DTHTVar[j] /= iCount[j];
 		  // Now add this to the graphs, plotting error = sqrt( var )
 		  g_x[g_Count] = x[j];
-		  //g_xErr[g_Count] = ex[j];
+		  g_xErr[g_Count] = ex[j];
 		  g_F2DT[g_Count] = F2DT[j] * yScale;
 		  g_F2DTErr[g_Count] = sqrt( F2DTVar[j] );
 		  g_F2DTHT[g_Count] = F2DTHT[j] * yScale;
@@ -501,7 +795,7 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
 	    }
 	  static const char szCompGE[] = ">=";
 	  const char * pszComp = &szCompGE[1];
-	  if( iSeries == iMaxSeries - 1 && iMaxSeries != ( int ) Series.size() )
+	  if( iSeries == iMaxSeries - 1 && iMaxSeries != Series.size() )
 	    pszComp--;
 	  ssTitle << pszSeries << pszComp << fixed << setprecision( iSeriesPrecision ) << Series[iSeries];
 	  if( iSeriesPrecision != 1 )
@@ -555,211 +849,6 @@ void Cassandra::DataManager::CreateGraphs( const TMatrixDSym & MData, const TMat
       //for( int iSeries = 0 ; iSeries < iMaxSeries ; iSeries++ )
         //delete gF2DT[iSeries];
     }
-}
-
-/*void Cassandra::DataManager::CreateGraphs( DataSet & ds, const std::string & sNamePrefix,
-					   const std::string &sFileNameSeq,
-					   const std::string &ssCut,
-					   double xBinSize, double Q2BinSize,
-					   double * Model ) const
-{
-  // Bin data by X, sorted by Q2 within each bin
-  std::vector<Bin>  x_bin( 0 );
-  ds.m_l.sort( DataNodeSortQ2Only );
-  for( DataNode * p : ds.m_l )
-    {
-      double thisx = ( ( ( int ) ( p->m_x / xBinSize ) ) + 0.5 ) * xBinSize;
-      // Add another x bin if new
-      int i = 0;
-      while( i < x_bin.size() && x_bin[i].central != thisx )
-	i++;
-      if( i == x_bin.size() )
-	x_bin.push_back( Bin( thisx ) );
-      x_bin[i].Add( p->m_Q2, p->ScaledValue() / ModelTheory( p, Model, 0 ), p->ScaledErrStat() );
-    }
-
-  // Bin data by Q2, sorted by X within each bin
-  std::vector<Bin> Q2_bin( 0 );
-  ds.m_l.sort( DataNodeSortXOnly );
-  int iQ2MinBin = ds.m_QMin * ds.m_QMin / Q2BinSize + 0.5;
-  bool bQ2Overflow = false;
-  for( DataNode * p : ds.m_l )
-    {
-      int iThisQ2Bin = p->m_Q2 / Q2BinSize;
-      if( iThisQ2Bin > iQ2MinBin + 9 )
-	{
-	  bQ2Overflow = true;
-	  iThisQ2Bin = iQ2MinBin + 9;
-	}
-      double thisQ2 = ( iThisQ2Bin + 0.5 ) * Q2BinSize;
-      // Add another Q2 bin if new
-      int i = 0;
-      while( i < Q2_bin.size() && Q2_bin[i].central != thisQ2 )
-	i++;
-      if( i == Q2_bin.size() )
-	Q2_bin.push_back( Bin( thisQ2 ) );
-      Q2_bin[i].Add( p->m_x, p->ScaledValue() / ModelTheory( p, Model, 0 ), p->ScaledErrStat() );
-    }
-
-  // Sort the bins
-  std::sort(x_bin.begin(), x_bin.end(), [] (Bin const& a, Bin const& b) { return a.central < b.central; });
-  std::sort(Q2_bin.begin(), Q2_bin.end(), [] (Bin const& a, Bin const& b) { return a.central < b.central; });
-
-  // Now graph F2D/T vs Q2 by x bin
-  // Create arrays to hold data
-  // Now create graphs
-  std::string ss2( sFileNameSeq );
-  ss2.append( "_F2DTvsQ2_" );
-  if( Model == nullptr )
-    ss2.append( "NoHT.pdf" );
-  else
-    ss2.append( "HT.pdf" );
-  LOG( Often, "Creating " << ss2 << endl );
-  int iBin = x_bin.size();
-  if( iBin < Q2_bin.size() )
-    iBin = Q2_bin.size();
-  TGraphErrors * ge[iBin];
-  double xFactor = 1.;
-  // Build a list of error outliers
-  std::vector<double> dMax( m_NumOutliers + 1, 0 );
-  for( int iBin = 0 ; iBin < x_bin.size() ; iBin++ )
-    for( int i = 0 ; i < x_bin[iBin].ey.size() ; i++ )
-      if( dMax[0] < x_bin[iBin].ey[i] )
-	{
-	  dMax[0] = x_bin[iBin].ey[i];
-	  if( m_NumOutliers > 0 )
-	    std::sort( dMax.begin(), dMax.end() );
-	}
-  // Now build my graphs
-  auto mg = new TMultiGraph();
-  for( int iBin = x_bin.size() - 1 ; iBin >= 0 ; iBin-- )
-    {
-      int Ndat = x_bin[iBin].y.size();
-      double y_scaled[Ndat];
-      double ey_scaled[Ndat];
-      for( int i = 0 ; i < Ndat ; i++ )
-	{
-	  y_scaled[i]  = x_bin[iBin].y[i] * xFactor;
-	  double dey = x_bin[iBin].ey[i];
-	  if( dMax[0] > 0. && dey > dMax[0] )
-	    dey = dMax[0] * 1.02;
-	  ey_scaled[i] = dey * 10;
-	}
-      ge[iBin] = new TGraphErrors( x_bin[iBin].x.size(), &x_bin[iBin].x[0], y_scaled, nullptr, ey_scaled );
-      //ge[iBin]->SetLineWidth( 3 );
-      ge[iBin]->SetMarkerStyle( 21 );
-      ge[iBin]->SetMarkerSize( 0.25 );
-      ge[iBin]->SetMarkerColor( iBin + 2 );
-      //ge[iBin]->SetFillColor( iBin + 2 );
-      //ge[iBin]->SetFillStyle( 3010 );
-      //ge[iBin]->Fit( "pol6", "cmq", "", x_bin[iBin].x[0], x_bin[iBin].x[Ndat - 1] );
-      std::stringstream ssTitle;
-      ssTitle << "x=" << fixed << setprecision(2) << x_bin[iBin].central << ", n="
-	      << x_bin[iBin].x.size() << " (x" << setprecision(1) << xFactor << ")";
-      ge[iBin]->SetTitle( ssTitle.str().c_str() );
-      mg->Add( ge[iBin] );
-      xFactor += 0.5;
-    }
-  std::string sTitle( "F2 D/T vs Q**2 (" );
-  if( Model == nullptr )
-    sTitle.append( "NoHT) " );
-  else
-    sTitle.append( "HT) " );
-  sTitle.append( sNamePrefix );
-  sTitle.append( "; Q**2/GeV**2 (" );
-  sTitle.append( ssCut );
-  sTitle.append( "); F2 Data/Theory (Error x10)" );
-  mg->SetTitle( sTitle.c_str() );
-  TCanvas *c1 = new TCanvas("c1","Unused title - was ss1",200,10,700,500);
-  c1->SetGrid();
-  c1->GetFrame()->SetBorderSize(12);
-  //c1->SetLogy();
-  mg->Draw("APZ");
-  TLegend * pLeg = c1->BuildLegend( 0.75, 0.75, 0.9, 0.9 );
-  auto OldErrLvl = gErrorIgnoreLevel;
-  gErrorIgnoreLevel = kWarning;
-  c1->Print(ss2.c_str());
-  gErrorIgnoreLevel = OldErrLvl;
-  //delete mg;
-  for( int iBin = 0 ; iBin < x_bin.size() ; iBin++ )
-    delete ge[iBin];
-  delete pLeg;
-  delete c1;
-
-  // Now graph F2D/T vs x by Q2 bin
-  // Create arrays to hold data
-  // Now create graphs
-  ss2 = sFileNameSeq;
-  ss2.append( "_F2DTvsX_" );
-  if( Model == nullptr )
-    ss2.append( "NoHT.pdf" );
-  else
-    ss2.append( "HT.pdf" );
-  LOG( Often, "Creating " << ss2 << endl );
-  xFactor = 1.;
-  mg = new TMultiGraph();
-  bool bFirst = true;
-  double dOutlier = ( ( double ) ( Q2_bin.size() + 3 ) ) / 2;
-  for( int iBin = Q2_bin.size() - 1 ; iBin >= 0 ; iBin-- )
-    {
-      int Ndat = Q2_bin[iBin].y.size();
-      double y_scaled[Ndat];
-      double ey_scaled[Ndat];
-      for( int i = 0 ; i < Ndat ; i++ )
-	{
-	  y_scaled[i]  = Q2_bin[iBin].y[i]  * xFactor;
-	  if( y_scaled[i] > dOutlier )
-	    y_scaled[i] = dOutlier;
-	  double dey = Q2_bin[iBin].ey[i];
-	  if( dMax[0] > 0. && dey > dMax[0] )
-	    dey = dMax[0] * 1.02;
-	  ey_scaled[i] = dey * 10;
-	}
-      ge[iBin] = new TGraphErrors( Q2_bin[iBin].x.size(), &Q2_bin[iBin].x[0], y_scaled, nullptr, ey_scaled );
-      //ge[iBin]->SetLineWidth( 3 );
-      ge[iBin]->SetMarkerStyle( 21 );
-      ge[iBin]->SetMarkerSize( 0.25 );
-      ge[iBin]->SetMarkerColor( ( iBin < 9 ) ? iBin + 1 : iBin + 2 );
-      //ge[iBin]->SetFillColor( iBin + 2 );
-      //ge[iBin]->SetFillStyle( 3010 );
-      //ge[iBin]->Fit( "pol6", "cmq", "", x_bin[iBin].x[0], x_bin[iBin].x[Ndat - 1] );
-      std::stringstream ssTitle;
-      if( bFirst && bQ2Overflow )
-	ssTitle << "Q**2>=";
-      else
-	ssTitle << "Q**2=";
-      ssTitle << fixed << setprecision(1) << Q2_bin[iBin].central << ", n="
-	      << Q2_bin[iBin].x.size() << " (x" << xFactor << ")";
-      ge[iBin]->SetTitle( ssTitle.str().c_str() );
-      mg->Add( ge[iBin] );
-      xFactor += 0.5;
-      bFirst = false;
-    }
-  sTitle="F2 D/T vs x (";
-  if( Model == nullptr )
-    sTitle.append( "NoHT) " );
-  else
-    sTitle.append( "HT) " );
-  sTitle.append( sNamePrefix );
-  sTitle.append( "; Bjorken-x (" );
-  sTitle.append( ssCut );
-  sTitle.append( "); F2 Data/Theory (Error x10)" );
-  mg->SetTitle( sTitle.c_str() );
-  c1 = new TCanvas("c1","Unused title - was ss1",200,10,700,500);
-  c1->SetGrid();
-  c1->GetFrame()->SetBorderSize(12);
-  //c1->SetLogy();
-  mg->Draw("APZ");
-  pLeg = c1->BuildLegend( 0.75, 0.75, 0.9, 0.9 );
-  OldErrLvl = gErrorIgnoreLevel;
-  gErrorIgnoreLevel = kWarning;
-  c1->Print(ss2.c_str());
-  gErrorIgnoreLevel = OldErrLvl;
-  //delete mg;
-  for( int iBin = 0 ; iBin < Q2_bin.size() ; iBin++ )
-    delete ge[iBin];
-  delete pLeg;
-  delete c1;
 }*/
 
 void Cassandra::DataManager::PlotDiagonals( const TMatrixDSym & MData, const TMatrixDSym & MTheory,
@@ -817,7 +906,7 @@ void Cassandra::DataManager::PlotDiagonals( const TMatrixDSym & MData, const TMa
     {
       for( int c = 0; c < iNumCharts ; c++ ) // c for chart
 	{
-	  const TMatrixDSym * M;
+	  const TMatrixDSym * M = nullptr;
 	  switch( c )
 	    {
 	    case 0:
@@ -1079,9 +1168,8 @@ bool Cassandra::DataManager::LoadHTModel( std::vector<HT> &ht, int iModelNum ) c
 
 // Make a prediction
 
-bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOutFilePrefix, CutChi & cc,
-					       size_t SampleSize, bool /*bShowCut*/,
-					       double xBinSize, double Q2BinSize)
+bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOutFilePrefix, CutChi & cc,
+						size_t SampleSize, bool /*bShowCut*/ )
 {
   const char sp = ' ';
   static const char szSep[] = ": ";
@@ -1089,17 +1177,6 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
   const char * pszCut = Cassandra_StrictString( cc.bStrict );
   std::stringstream ssCut;
   ssCut << "Q**2" << pszCut << fixed << setprecision(1) << cc.Q2 << ", W**2" << pszCut << cc.W2;
-
-  const char * pszNamePrefixPreamble = pszOutFilePrefix;
-  {
-    std::string s( pszNamePrefixPreamble );
-    std::size_t pos = s.rfind( '/' );
-    if( pos != std::string::npos && s[pos + 1] != 0 )
-      pszNamePrefixPreamble += pos + 1;
-  }
-  std::string sNamePrefix( pszNamePrefixPreamble );
-  sNamePrefix.append( 1, '_' );
-  sNamePrefix.append( ds.Name() );
 
   std::string sFileNameSeq( pszOutFilePrefix );
   sFileNameSeq.append( 1, '_' );
@@ -1115,8 +1192,8 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
   ds.DumpList(SampleSize);
 
   // Clear the combined covariance matrix
-  for( unsigned int i = 0 ; i < ds.CutSize() ; i++ )
-    for( unsigned int j = 0 ; j < ds.CutSize() ; j++ )
+  for( int i = 0 ; i < ( int ) ds.CutSize() ; i++ )
+    for( int j = 0 ; j < ( int ) ds.CutSize() ; j++ )
       {
 	ds.m_MCovar[i][j] = 0.;
 	ds.m_MCovarInv[i][j] = 0.;
@@ -1140,8 +1217,8 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  sCounts.append( std::to_string( pDS->CutSize() ) );
 	  // Construct the covariance matrix from the block diagonals of the component matrices
 	  pDS->ConstructCovar();
-	  for( unsigned int i = 0 ; i < pDS->CutSize() ; i++ )
-	    for( unsigned int j = 0 ; j < pDS->CutSize() ; j++ )
+	  for( int i = 0 ; i < ( int ) pDS->CutSize() ; i++ )
+	    for( int j = 0 ; j < ( int ) pDS->CutSize() ; j++ )
 	      {
 		ds.m_MCovar   [iNumData + i][iNumData + j] = pDS->m_MCovar[i][j];
 		ds.m_MCovarInv[iNumData + i][iNumData + j] = pDS->m_MCovarInv[i][j];
@@ -1172,12 +1249,12 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  static const int iMarkerStyles[] = { 22, 23, 29, 33, 39, 41, 47, 48 }; 
 	  double x[pDS->CutSize()];
 	  double y[pDS->CutSize()];
-	  for( unsigned int i = 0 ; i < pDS->CutSize() ; i++ )
+	  for( int i = 0 ; i < ( int ) pDS->CutSize() ; i++ )
 	    {
 	      x[i] = pDS->m_v[i]->m_x + ( c - iNumDataSets / 2. ) * 0.002;
 	      y[i] = pDS->m_v[i]->m_Q2;
 	    }
-	  auto gr = new TGraph( pDS->CutSize(), x, y );
+	  auto gr = new TGraph( ( Int_t ) pDS->CutSize(), x, y );
 	  gr->SetTitle( pDS->Name() );
 	  gr->SetMarkerStyle( iMarkerStyles[c % 8] );
 	  int iColor;
@@ -1193,7 +1270,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  c++;
 	}
     std::stringstream ssTitle;
-    ssTitle << " Data surviving cuts at " << ssCut.str().c_str()
+    ssTitle << m_pszTarget << " data surviving cuts at " << ssCut.str().c_str()
 	    << "; X (" << ds.CutSize() << " data points, " << sCounts.c_str() << "); Q**2 / GeV**2";
     mg->SetTitle( ssTitle.str().c_str() );
     TCanvas *c1 = new TCanvas("c1","Unused title - was ss1",200,10,700,500);
@@ -1201,7 +1278,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
     c1->GetFrame()->SetBorderSize(12);
     c1->SetLogy();
     mg->Draw( "AP" );
-    TLegend * pLeg = c1->BuildLegend( 0.1, 0.8, 0.25, 0.9 );
+    TLegend * pLeg = c1->BuildLegend( 0.1, 0.8, 0.25, 0.94 );
     auto OldErrLvl = gErrorIgnoreLevel;
     gErrorIgnoreLevel = kWarning;
     c1->Print( sFileName.c_str() );
@@ -1225,7 +1302,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
        << chisq/iNumData << ", with " << iNumData << " data points" << endl );
 
   // Either load, or create the higher twist model
-  int iNumHTReplicas;
+  int iNumHTReplicas = 0;
   double dNeff = 0.;
   bool bOK;
   if( m_pszModelPrefix )
@@ -1234,7 +1311,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
       bOK = LoadHTModel( m_ht.m_Model, cc.iSeq );
       if( bOK )
 	{
-	  iNumHTReplicas = m_ht.size();
+	  iNumHTReplicas = ( int ) m_ht.size();
 	  // Calculate the weights across the HT replicas
 	  double lnReplicas = std::log( iNumHTReplicas );
 	  for( int k = 0 ; k < iNumHTReplicas ; k++ )
@@ -1269,7 +1346,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  std::vector<double> vNewTheory( iNumData );
 	  iNumHTReplicas = m_Params[0].Num * m_Params[1].Num * m_Params[2].Num * m_Params[3].Num;
 	  m_ht.m_Model.resize( iNumHTReplicas );
-	  double dMinWeight;
+	  double dMinWeight = 0;
 	  int k = 0;
 	  int ai, bi, ci, di;
 	  double a, b, c, d;
@@ -1484,7 +1561,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  MTheoryCorrel[j][i] = d;
       }
   std::string sChartTitle( "Theory Correlation " );
-  sChartTitle.append( sNamePrefix );
+  sChartTitle.append( ds.Name() );
   std::string sChartName( sFileNameSeq );
   sChartName.append( "_CorrelTheory.pdf" );
   PlotCorrelation( MTheoryCorrel, dNeff, sChartTitle, sChartName, ssCut.str(), sCounts );
@@ -1500,7 +1577,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  MExptCorrel[j][i] = d;
       }
   sChartTitle = "Experiment Correlation ";
-  sChartTitle.append( sNamePrefix );
+  sChartTitle.append( ds.Name() );
   sChartName = sFileNameSeq;
   sChartName.append( "_CorrelExpt.pdf" );
   PlotCorrelation( MExptCorrel, dNeff, sChartTitle, sChartName, ssCut.str(), sCounts );
@@ -1517,7 +1594,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  MExptTheoryCorrel[j][i] = d;
       }
   sChartTitle = "Experiment+Theory Correlation ";
-  sChartTitle.append( sNamePrefix );
+  sChartTitle.append( ds.Name() );
   sChartName = sFileNameSeq;
   sChartName.append( "_CorrelExptTheory.pdf" );
   PlotCorrelation( MExptTheoryCorrel, dNeff, sChartTitle, sChartName, ssCut.str(), sCounts );
@@ -1569,15 +1646,15 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
   }
 
   // Plot the higher twist
-  PlotHT( ds, sNamePrefix, sFileNameSeq, ssCut.str(), HTMean, MTheoryCovar );
+  PlotHT( ds, sFileNameSeq, ssCut.str(), HTMean, MTheoryCovar );
 
   // Create graphs of the data - this time using the model
   CreateGraphs( ds.m_MCovar, MTheoryCovar, ds.m_v, dNeff,
-		sNamePrefix, sFileNameSeq, ssCut.str(), sCounts, HTMean, xBinSize, Q2BinSize );
+		ds.Name(), sFileNameSeq, ssCut.str(), sCounts, HTMean );
 
   // Plot the diagonal experimental and theoretical errors
   PlotDiagonals( ds.m_MCovar, MTheoryCovar, ds.m_v, dNeff,
-		 sNamePrefix, sFileNameSeq, ssCut.str(), sCounts );
+		 ds.Name(), sFileNameSeq, ssCut.str(), sCounts );
 
   // If I'm running a pre-existing model with more data, determine effect on PDFs
   if( m_pszModelPrefix && ds.m_iNumReplicas > 1 )
@@ -1615,15 +1692,15 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	  std::chrono::duration<double> tElapsed = tEnd - tStart;
 	  LOG( Often, "Matrix inversion took " << fixed << tElapsed.count() << " seconds." << endl );
 
-	  //double vNewTheory[iNumData];
+	  double vNewTheory[iNumData];
 	  double vChi[ds.m_iNumReplicas];
-	  double dMinWeight;
+	  double dMinWeight = 0;
 	  // Calculate chi squared for each replica
 	  for( int iRep = 1 ; iRep < ds.m_iNumReplicas ; iRep++ )
 	    {
 	      // Calculate the new theoretical predictions
-	      //for( int i = 0 ; i < iNumData ; i++)
-            //vNewTheory[i] = ds.m_v[i]->m_Theory[iRep] + HTMean[i];
+	      for( int i = 0 ; i < iNumData ; i++)
+		vNewTheory[i] = ds.m_v[i]->m_Theory[iRep] + HTMean[i];
 
 	      // Calculate chi squared goodness of fit
 	      vChi[iRep] = 0;
@@ -1742,7 +1819,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 	      // We'll need space for every parton's data
 	      Matrix2D MPartonData[iNumPartons];
 	      for( int i = 0 ; i < iNumPartons ; i++ )
-		MPartonData[i].Resize( x.size(), ds.m_iNumReplicas );
+		MPartonData[i].Resize( ( int ) x.size(), ds.m_iNumReplicas );
 
 	      // Load evolution
 	      IF_LOG(Mostly)
@@ -1773,7 +1850,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 		  APFEL::SetReplica( iRep );
 		  APFEL::EvolveAPFEL( Q0, m_dQChartScale );
 		  // Walk the list of x-values
-		  for( unsigned int i = 0 ; i < x.size() ; i++ )
+		  for( int i = 0 ; i < ( int ) x.size() ; i++ )
 		    {
 		      double xf[13];
 		      APFEL::xPDFall( x[i], xf );
@@ -1793,7 +1870,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 		  double y_Mod[x.size()];
 		  double y_ModErr[x.size()];
 		  double y_ErrRatio[x.size()];
-		  for( unsigned int i = 0 ; i < x.size() ; i++ )
+		  for( int i = 0 ; i < ( int ) x.size() ; i++ )
 		    {
 		      y_Orig[i] = 0.;
 		      y_OrigErr[i] = 0.;
@@ -1819,7 +1896,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 		      y_ModErr[i] = std::sqrt( y_ModErr[i] / dTotalWeight );
 		      // cout << cc.iSeq << szSep << Partons[c].m_szName << " raw  " << i
 		      // << " x=" << x[i]
-              // << " Orig=" << y_Orig[i] << " +/- " << y_OrigErr[i]
+		      // << " Orig=" << y_Orig[i] << " +/- " << y_OrigErr[i]
 		      // << " Mod=" << y_Mod[i] << " +/- " << y_ModErr[i]
 		      // << endl;
 		      // Calculate ratio of new error to old
@@ -1846,18 +1923,18 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 		      //y_Mod[i] = 1.1;
 		    }
 		  // Now create charts
-		  auto g_Orig = new TGraphErrors( x.size(), &x[0], y_Orig, nullptr, y_OrigErr );
+		  auto g_Orig = new TGraphErrors( ( Int_t ) x.size(), &x[0], y_Orig, nullptr, y_OrigErr );
 		  //g_Orig->SetLineStyle( 2 );
 		  g_Orig->SetLineColor( kBlack );
 		  g_Orig->SetFillColor( 2 );
 		  g_Orig->SetFillStyle( 3002 );
 		  g_Orig->SetTitle( "NNPDF 3.1" );
-		  auto g_Mod = new TGraphErrors( x.size(), &x[0], y_Mod, nullptr, y_ModErr );
+		  auto g_Mod = new TGraphErrors( ( Int_t ) x.size(), &x[0], y_Mod, nullptr, y_ModErr );
 		  g_Mod->SetLineColor( 2 );
 		  g_Mod->SetFillColor( 4 );
 		  g_Mod->SetFillStyle( 3004 );
 		  g_Mod->SetTitle( "+HT" );
-		  auto g_ErrRatio = new TGraph( x.size(), &x[0], y_ErrRatio );
+		  auto g_ErrRatio = new TGraph( ( Int_t ) x.size(), &x[0], y_ErrRatio );
 		  g_ErrRatio->SetLineColor( 7 ); // acqua
 		  g_ErrRatio->SetMarkerColor( 7 ); // acqua
 		  g_ErrRatio->SetTitle( "Rel. Error" );
@@ -1876,7 +1953,7 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 		  gErrorIgnoreLevel = kWarning;
 		  {
 		    std::stringstream sTitle;
-		    sTitle << Partons[c].m_szChartName << ' ' << sNamePrefix
+		    sTitle << Partons[c].m_szChartName << ' ' << ds.Name()
 			   << " (Q=" << fixed << setprecision(1) << m_dQChartScale << " GeV); X ("
 			   << ds.CutSize() << " data points, " << ssCut.str().c_str()
 			   << "); x * PDF (NNPDF 3.1=1)";
@@ -1885,10 +1962,10 @@ bool Cassandra::DataManager::MakeOnePrediction(DataSet & ds, const char * pszOut
 		    c1->Update();
 		    mg->SetMinimum( 0.8 );
 		    mg->SetMaximum( 1.3 );
-		    /*TLegend * pLeg =*/ c1->BuildLegend( 0.45, 0.82, 0.55, 0.9 );
+		    //TLegend * pLeg = c1->BuildLegend( 0.4, 0.74, 0.6, 0.9 );
 
 		    //sChartTitle = Partons[c].m_szChartName;
-		    //sChartTitle.append( sNamePrefix );
+		    //sChartTitle.append( ds.Name() );
 		    //g_Orig->SetTitle( sChartTitle.c_str() );
 		    //g_Orig->GetXaxis()->SetTitle( "NNPDF 3.1=1" );
 		    //auto t = g_Orig->GetYaxis();
@@ -2207,23 +2284,39 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 					    bool bStrictFirstCut,
 					    int SampleSize, bool bParseOnly, bool bShowCut,
 					    const double PW2Min, double W2Max,
-					    const double PQ2Min, double Q2Max, int NumSteps,
-					    double xBinSize, double Q2BinSize )
+					    const double PQ2Min, double Q2Max, int NumSteps )
 {
   bool bMadePrediction = false;
   bool bNoError = true;
 
   // Get name for combined DataSet
-  std::string sName;
   bool bFirst = true;
+  m_pszTarget = nullptr;
   for( DataSet * pDS : m_DataSets )
     {
       if( pDS->size() )
 	{
-	  if( bFirst )
-	    bFirst = false;
-	  else
-	    sName.append( 1, '_' );
+	  for( DataNode * p : pDS->m_list )
+	    {
+	      if( bFirst )
+		{
+		  bFirst = false;
+		  m_pszTarget = p->Name();
+		}
+	      else if( m_pszTarget != p->Name() )
+		{
+		  static const char szCombined[] = "Combined";
+		  m_pszTarget = szCombined;
+		}
+	    }
+	}
+    }
+  std::string sName( m_pszTarget );
+  for( DataSet * pDS : m_DataSets )
+    {
+      if( pDS->size() )
+	{
+	  sName.append( 1, ' ' );
 	  sName.append( pDS->Name() );
 	}
     }
@@ -2368,7 +2461,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 	      else
 		{
 		  // Make sure we ended up with the same DataNodes in the same order
-		  unsigned int j = 0;
+		  int j = 0;
 		  for( DataSet * pDS : m_DataSets )
 		    for( DataNode * p : pDS->m_v )
 		      if( p != dsAll.m_v[j++] )
@@ -2378,7 +2471,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		      LOG( Always, i << ": Error: DataSets are in different order" << endl );
 		      bNoError = false;
 		    }
-		  else if( j != dsAll.CutSize() )
+		  else if( j != ( int ) dsAll.CutSize() )
 		    {
 		      LOG( Always, i << ": Error: DataSets are different size" << endl );
 		      bOK = false;
@@ -2391,8 +2484,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		      thisChi.W2 = W2;
 		      thisChi.Q2 = Q2;
 		      thisChi.bStrict = bStrictCut;
-		      bOK = MakeOnePrediction( dsAll, pszOutFilePrefix, thisChi, SampleSize, bShowCut,
-					       xBinSize, Q2BinSize );
+		      bOK = MakeOnePrediction( dsAll, pszOutFilePrefix, thisChi, SampleSize, bShowCut );
 		      if( bOK )
 			{
 			  bMadePrediction = true;
@@ -2409,7 +2501,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 	}
     }
   // Plot the chi table
-  int iNumChi = vChi.size();
+  int iNumChi = ( int ) vChi.size();
   if( iNumChi )
     {
       // Work out whether to plot the reweighted Chi as well
@@ -2534,14 +2626,14 @@ int main(int argc, char * argv[])
   bool bStrictFirstCut = false;
   int iNumReplicas = 1;
 
-  double xBinSize = 0.1;
-  double Q2BinSize = 4;
+  double xBinSize = 0.01;
+  double Q2BinSize = 2;
 
   int iReturnValue = 0;
 
   ModelParams Params;
   NodeSortFunc TwiggySort = DataNodeSortTypeXQ2;
-  int iNumOutliers = 0;
+  int iNumOutliers = 3;
   const char * pszModelPrefix = nullptr;
   int iModelNum = 0;
   bool bAdditive = false;
@@ -2579,7 +2671,7 @@ int main(int argc, char * argv[])
 	      {
 		char c = toupper( argv[i][2] );
 		if( c != 0 && ( argv[i][3] == '-' || argv[i][3] == '.'
-				|| ( argv[i][3] >= '0' && argv[i][3] <= '9' ) ) )
+			       || (argv[i][3] >= '0' && argv[i][3] <= '9') ) )
 		  {
 		    double d = atof( &argv[i][3] );
 		    if( c == 'X' )
@@ -2628,17 +2720,13 @@ int main(int argc, char * argv[])
 	      break;
 
 	    case 'N':
-	      {
-		if( argv[i][2] >= '0' && argv[i][2] <= '9' ) 
-		  NumSteps = atoi( &argv[i][2] );
-	      }
+	      if( argv[i][2] >= '0' && argv[i][2] <= '9' ) 
+		NumSteps = atoi( &argv[i][2] );
 	      break;
 
 	    case 'O':
-	      {
-		if( argv[i][2] >= '0' && argv[i][2] <= '9' )
-		    iNumOutliers = atoi( &argv[i][2] );
-	      }
+	      if( argv[i][2] >= '0' && argv[i][2] <= '9' )
+		iNumOutliers = atoi( &argv[i][2] );
 	      break;
 
 	    case 'P':
@@ -2646,7 +2734,7 @@ int main(int argc, char * argv[])
 		char c = argv[i][2];
 		if( c == 0 )
 		  pszPDFSet = szDefaultPDFSet;
-		else if( ( c >= '0' && c <= '9' ) || c == '.' )
+		else if( (c >= '0' && c <= '9') || c == '.' )
 		  {
 		    dQChartScale = atof( &argv[i][2] );
 		    // If we've specified a chart scale, clearly we want a chart!
@@ -2669,12 +2757,12 @@ int main(int argc, char * argv[])
 	      else
 		{
 		  if( toupper( argv[i][2] ) == 'L' && ( argv[i][3] == '-' || argv[i][3] == '.'
-							|| ( argv[i][3] >= '0' && argv[i][3] <= '9' ) ) )
+						       || (argv[i][3] >= '0' && argv[i][3] <= '9') ) )
 		    {
 		      Q2Min = atof( &argv[i][3] );
 		    }
 		  else if( toupper( argv[i][2] ) == 'U' && ( argv[i][3] == '-' || argv[i][3] == '.'
-							|| ( argv[i][3] >= '0' && argv[i][3] <= '9' ) ) )
+							    || (argv[i][3] >= '0' && argv[i][3] <= '9') ) )
 		    {
 		      Q2Max = atof( &argv[i][3] );
 		    }
@@ -2731,12 +2819,12 @@ int main(int argc, char * argv[])
 	      else
 		{
 		  if( toupper( argv[i][2] ) == 'L' && ( argv[i][3] == '-' || argv[i][3] == '.'
-							|| ( argv[i][3] >= '0' && argv[i][3] <= '9' ) ) )
+						       || (argv[i][3] >= '0' && argv[i][3] <= '9') ) )
 		    {
 		      W2Min = atof( &argv[i][3] );
 		    }
 		  else if( toupper( argv[i][2] ) == 'U' && ( argv[i][3] == '-' || argv[i][3] == '.'
-							|| ( argv[i][3] >= '0' && argv[i][3] <= '9' ) ) )
+							    || (argv[i][3] >= '0' && argv[i][3] <= '9') ) )
 		    {
 		      W2Max = atof( &argv[i][3] );
 		    }
@@ -2747,7 +2835,7 @@ int main(int argc, char * argv[])
 	      switch( toupper( argv[i][2] ) )
 		{
 		case 'C':
-		  if( ( argv[i][3] >= '0' && argv[i][3] <= '9' ) || argv[i][3] == '.' )
+		    if( (argv[i][3] >= '0' && argv[i][3] <= '9') || argv[i][3] == '.' )
 		    dxCutoff = atof( &argv[i][3] );
 		  break;
 		case '1':
@@ -2894,8 +2982,8 @@ int main(int argc, char * argv[])
   }
 
   // Okay, finally start running our model and making predictions
-  Cassandra::DataManager myPred( Params, TwiggySort, iNumOutliers, pszModelPrefix,
-				 dxCutoff, pszPDFSet, dQChartScale, iModelNum, bAdditive, iNumReplicas );
+  Cassandra::DataManager myPred( Params, iNumReplicas, TwiggySort, iNumOutliers, pszModelPrefix,
+				 dxCutoff, iModelNum, bAdditive, pszPDFSet, dQChartScale, xBinSize, Q2BinSize);
   for( int i = 1 && iReturnValue == 0 ; i < argc ; i++ )
     {
       if( argv[i][0] != 0 )
@@ -2943,8 +3031,7 @@ int main(int argc, char * argv[])
 	  // Make predictions
 	  if( !myPred.MakePrediction( pszOutFilePrefix, bStrictFirstCut, SampleSize,
 				      bParseOnly, bShowCut,
-				      W2Min, W2Max, Q2Min, Q2Max, NumSteps,
-				      xBinSize, Q2BinSize ) )
+				      W2Min, W2Max, Q2Min, Q2Max, NumSteps ) )
 	    iReturnValue = -4;
 	}
     }

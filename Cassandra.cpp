@@ -230,9 +230,9 @@ void Cassandra::DataNode::SerialiseFieldName(FieldType Type, int iIndex, std::os
   else
     {
       std::string sNum = std::to_string( iSuffix );
-      int iPad = iLen - s.length() - sNum.length();
+      int iPad = iLen - ( int ) ( s.length() + sNum.length() );
       if( iPad > 0 )
-	os << setw(iPad + s.length()) << s << sNum;
+	os << setw(iPad + ( int ) s.length()) << s << sNum;
       else
 	os << s << sNum;
     }
@@ -248,7 +248,7 @@ void Cassandra::DataNode::SerialiseHeader( std::ostream & os, int iMaxTheory, in
       os << "Nucleon eBeam i x Q**2 Q W**2 W y";
   else
     os << "  eBeam       i        x     Q**2        Q     W**2        W        y";
-  for( size_t i = 0 ; i < m_Data.size() ; i ++ )
+  for( int i = 0 ; i < ( int ) m_Data.size() ; i ++ )
     SerialiseFieldName(Cassandra::DataNode::FieldType::Data, i, os, 9);
   for( int i = iMinTheory ; i < iMaxTheory && i < ( int ) m_Theory.size() ; i ++ )
     SerialiseFieldName(Cassandra::DataNode::FieldType::Theory, i, os, 10);
@@ -1372,8 +1372,9 @@ bool Cassandra::DataSet::ApplyCut(double W2Min, double Q2Min, bool bStrictCut,
 	       << setw(12) << m_QMin * m_QMin << setw(12) << m_QMax * m_QMax << endl );
 
 	  // Reserve space for the covariance matrix
-	  m_MCovar.ResizeTo( CutSize(), CutSize() );
-	  m_MCovarInv.ResizeTo( CutSize(), CutSize() );
+	  int iCutSize = ( int ) CutSize();
+	  m_MCovar.ResizeTo( iCutSize, iCutSize );
+	  m_MCovarInv.ResizeTo( iCutSize, iCutSize );
 
 	  // Sort list by energy so we can save a bit of execution time, then put data in vector
 	  m_l.sort( DataNodeSortQXFile );
