@@ -12,13 +12,6 @@ const char * Cassandra::pszSLAC = "SLAC";
 const char * Cassandra::pszJLAB = "JLAB";
 const char * Cassandra::pszBoNuS = "JLAB_BoNuS";
 
-// I really shouldn't have to define this, but getting linker errors without it
-
-void TObject::SavePrimitive(std::basic_ostream<char, std::char_traits<char> >&, char const*)
-{
-    std::cerr << "Error: SavePrimitive() called" << std::endl;
-}
-
 //static Cassandra::Logger lout;
 
 std::unique_ptr<std::ofstream> Cassandra::Global_Log_File;

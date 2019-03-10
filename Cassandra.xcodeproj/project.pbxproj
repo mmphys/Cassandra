@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		68086BA721C5BC8000D152AE /* CassMain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 68086BA221C5BC6100D152AE /* CassMain.cpp */; };
 		68086BA821C5BC8900D152AE /* Cassandra.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 68086BA321C5BC6200D152AE /* Cassandra.cpp */; };
+		68B1DEDD2234A77B00D41505 /* Cassandra.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 68086BA321C5BC6200D152AE /* Cassandra.cpp */; };
+		68B1DEE52234A7A700D41505 /* Twiggy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 68086BA121C5BC6100D152AE /* Twiggy.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -21,26 +23,43 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		68B1DEE02234A77B00D41505 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		68086B9621C5BBF300D152AE /* Cassandra */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Cassandra; sourceTree = BUILT_PRODUCTS_DIR; };
-		68086BA021C5BC6100D152AE /* CassMain.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CassMain.h; sourceTree = "<group>"; };
-		68086BA121C5BC6100D152AE /* Twiggy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Twiggy.cpp; sourceTree = "<group>"; };
-		68086BA221C5BC6100D152AE /* CassMain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CassMain.cpp; sourceTree = "<group>"; tabWidth = 8; };
-		68086BA321C5BC6200D152AE /* Cassandra.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Cassandra.cpp; sourceTree = "<group>"; };
-		68086BA421C5BC6200D152AE /* Twiggy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Twiggy.h; sourceTree = "<group>"; };
-		68086BA521C5BC6200D152AE /* Logger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
-		68086BA621C5BC6200D152AE /* Cassandra.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Cassandra.h; sourceTree = "<group>"; };
-		682B91D9223430B900EEB67C /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		6852EDD62234809400FBA8BE /* T */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = T; sourceTree = "<group>"; };
+		68086BA021C5BC6100D152AE /* CassMain.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CassMain.h; sourceTree = "<group>"; usesTabs = 1; };
+		68086BA121C5BC6100D152AE /* Twiggy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Twiggy.cpp; sourceTree = "<group>"; usesTabs = 1; };
+		68086BA221C5BC6100D152AE /* CassMain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CassMain.cpp; sourceTree = "<group>"; tabWidth = 8; usesTabs = 1; };
+		68086BA321C5BC6200D152AE /* Cassandra.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Cassandra.cpp; sourceTree = "<group>"; usesTabs = 1; };
+		68086BA421C5BC6200D152AE /* Twiggy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Twiggy.h; sourceTree = "<group>"; usesTabs = 1; };
+		68086BA521C5BC6200D152AE /* Logger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; usesTabs = 1; };
+		68086BA621C5BC6200D152AE /* Cassandra.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Cassandra.h; sourceTree = "<group>"; usesTabs = 1; };
+		682B91D9223430B900EEB67C /* Makefile */ = {isa = PBXFileReference; indentWidth = 8; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; usesTabs = 1; };
+		6852EDD62234809400FBA8BE /* T */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = text.script.sh; path = T; sourceTree = "<group>"; usesTabs = 1; };
 		6852EDD72234809400FBA8BE /* B */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = B; sourceTree = "<group>"; };
 		6852EDD82234809400FBA8BE /* S */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = S; sourceTree = "<group>"; };
 		6852EDD92234809400FBA8BE /* J */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = J; sourceTree = "<group>"; };
+		68B1DEE42234A77B00D41505 /* Twiggy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Twiggy; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		68086B9321C5BBF300D152AE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68B1DEDF2234A77B00D41505 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -73,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				68086B9621C5BBF300D152AE /* Cassandra */,
+				68B1DEE42234A77B00D41505 /* Twiggy */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +115,23 @@
 			name = Cassandra;
 			productName = Cassandra;
 			productReference = 68086B9621C5BBF300D152AE /* Cassandra */;
+			productType = "com.apple.product-type.tool";
+		};
+		68B1DEDB2234A77B00D41505 /* Twiggy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68B1DEE12234A77B00D41505 /* Build configuration list for PBXNativeTarget "Twiggy" */;
+			buildPhases = (
+				68B1DEDC2234A77B00D41505 /* Sources */,
+				68B1DEDF2234A77B00D41505 /* Frameworks */,
+				68B1DEE02234A77B00D41505 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Twiggy;
+			productName = Cassandra;
+			productReference = 68B1DEE42234A77B00D41505 /* Twiggy */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -124,6 +161,7 @@
 			projectRoot = "";
 			targets = (
 				68086B9521C5BBF300D152AE /* Cassandra */,
+				68B1DEDB2234A77B00D41505 /* Twiggy */,
 			);
 		};
 /* End PBXProject section */
@@ -135,6 +173,15 @@
 			files = (
 				68086BA821C5BC8900D152AE /* Cassandra.cpp in Sources */,
 				68086BA721C5BC8000D152AE /* CassMain.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		68B1DEDC2234A77B00D41505 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				68B1DEE52234A7A700D41505 /* Twiggy.cpp in Sources */,
+				68B1DEDD2234A77B00D41505 /* Cassandra.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -336,6 +383,22 @@
 			};
 			name = Release;
 		};
+		68B1DEE22234A77B00D41505 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		68B1DEE32234A77B00D41505 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -353,6 +416,15 @@
 			buildConfigurations = (
 				68086B9E21C5BBF300D152AE /* Debug */,
 				68086B9F21C5BBF300D152AE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		68B1DEE12234A77B00D41505 /* Build configuration list for PBXNativeTarget "Twiggy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68B1DEE22234A77B00D41505 /* Debug */,
+				68B1DEE32234A77B00D41505 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
