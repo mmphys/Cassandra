@@ -1,0 +1,8 @@
+#!/bin/bash
+echo Performing BCDMS run
+Exec="./Cassandra data/B* -wu12.5 -qu3.5 -sc -r101 -lPass1/B_High"
+Echo $Exec
+$Exec
+Exec="./Cassandra data/B* -wc -qc -sc -r101 -lPass1/B_Low"
+Echo $Exec
+$Exec

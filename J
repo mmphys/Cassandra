@@ -1,0 +1,5 @@
+#!/bin/bash
+echo Performing BCDMS run
+Exec="./Cassandra data/j* -r101 -lPass1/J"
+Echo $Exec
+$Exec
