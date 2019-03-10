@@ -14,8 +14,6 @@ Run the scripts B, J and S which outputs to Pass1
 
 Manually create the Pass2 directory. For each .F2 file created in pass 1, make two copies of the file in Pass2 directory, one for Deuteron data only and one for Proton data only. Update the file names to match the convention for pass 2, i.e.:
 
-Bullet list:
-
 * Deuteron_High_BCDMS_F2
 * Deuteron_Low_BCDMS_F2
 * Deuteron_Low_JLAB_F2
@@ -32,8 +30,6 @@ Bullet list:
 * reanalyzed/Proton_Low_SLAC_reanalyzed_F2
 
 Manually edit the files:
-
-Numbered list:
 
 1. Delete the data you don't want (Deuteron or Proton data)
 2. Append the target name to the end of the first line in the header, e.g. `Cassandra Prediction BCDMS F2 Proton`
