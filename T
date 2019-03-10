@@ -1,17 +1,20 @@
 #!/bin/bash
 
-DATAROOT="$HOME/src/Cassandra/Pass2"
-RESULTSROOT="$HOME/src/Cassandra/Results"
+DATAROOT="Pass2"
+RESULTSROOT="Results"
 
-#SLAC_TYPE=reanalyzed
-#SLAC_TYPE=0  #Don't include any SLAC data
-SLAC_TYPE=NNPDF
-
+#DATASET can be Low, High or neither (which processes all data)
 DATASET=Low
 #DATASET=High
 
+#TARGET can be Proton, Deuteron or neither (which processes all data)
 TARGET=Proton
 #TARGET=Deuteron
+
+#Choose one of the following to select whether/(which version of) the SLAC data are included
+SLAC_TYPE=NNPDF
+#SLAC_TYPE=reanalyzed
+#SLAC_TYPE=0  #Don't include any SLAC data
 
 PARAMS="-l4 -bx0.05 -bq2 -o3 -x0 -p"
 

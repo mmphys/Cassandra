@@ -49,6 +49,7 @@
 		6852EDD82234809400FBA8BE /* S */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = S; sourceTree = "<group>"; };
 		6852EDD92234809400FBA8BE /* J */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = J; sourceTree = "<group>"; };
 		68B1DEE42234A77B00D41505 /* Twiggy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Twiggy; sourceTree = BUILT_PRODUCTS_DIR; };
+		68E582E122352AAC00027DE8 /* readme.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = readme.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +73,7 @@
 		68086B8D21C5BBF300D152AE = {
 			isa = PBXGroup;
 			children = (
+				68E582E122352AAC00027DE8 /* readme.md */,
 				6852EDD72234809400FBA8BE /* B */,
 				6852EDD92234809400FBA8BE /* J */,
 				6852EDD82234809400FBA8BE /* S */,
