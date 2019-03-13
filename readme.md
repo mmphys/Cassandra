@@ -1,5 +1,11 @@
-Cassandra
-=========
+# Cassandra
+
+## Pre-requisites
+
+* LHAPDF (I used version 6.2.1) with NNPDF31_nnlo_as_0118
+* APFEL (I used version 3.0.2 - NB: 3.0.3 didn't work!)
+
+# Running a prediction
 
 There are two project executables:
 
