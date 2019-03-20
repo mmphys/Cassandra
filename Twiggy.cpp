@@ -2465,7 +2465,11 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		  for( DataSet * pDS : m_DataSets )
 		    for( DataNode * p : pDS->m_v )
 		      if( p != dsAll.m_v[j++] )
-			bOK = false;
+			{
+			  bOK = false;
+			  LOG( Always, "*** " );
+			  p->Serialise( LOG_STREAM, 5 );
+			}
 		  if( !bOK )
 		    {
 		      LOG( Always, i << ": Error: DataSets are in different order" << endl );
