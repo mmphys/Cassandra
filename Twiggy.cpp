@@ -2460,6 +2460,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		}
 	      else
 		{
+		  /* This test was really only necessary for debugging
 		  // Make sure we ended up with the same DataNodes in the same order
 		  int j = 0;
 		  for( DataSet * pDS : m_DataSets )
@@ -2469,7 +2470,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 			  bOK = false;
 			  LOG( Always, "*** " );
 			  p->Serialise( LOG_STREAM, 5 );
-			}
+			}*/
 		  if( !bOK )
 		    {
 		      LOG( Always, i << ": Error: DataSets are in different order" << endl );
