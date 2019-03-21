@@ -2476,11 +2476,11 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		      LOG( Always, i << ": Error: DataSets are in different order" << endl );
 		      bNoError = false;
 		    }
-		  else if( j != ( int ) dsAll.CutSize() )
+		  /*else if( j != ( int ) dsAll.CutSize() )
 		    {
 		      LOG( Always, i << ": Error: DataSets are different size" << endl );
 		      bOK = false;
-		    }
+		    }*/
 		  else
 		    {
 		      LOG( Sometimes, i << ": DataSets are in same order" << endl );
