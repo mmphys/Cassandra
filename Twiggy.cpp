@@ -2460,9 +2460,9 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		}
 	      else
 		{
+		  int j = 0;
 		  /* This test was really only necessary for debugging
 		  // Make sure we ended up with the same DataNodes in the same order
-		  int j = 0;
 		  for( DataSet * pDS : m_DataSets )
 		    for( DataNode * p : pDS->m_v )
 		      if( p != dsAll.m_v[j++] )
