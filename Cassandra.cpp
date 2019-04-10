@@ -3,6 +3,10 @@
 using namespace std;
 using namespace Cassandra;
 
+#if __GNUC__
+void TObject::SavePrimitive(std::basic_ostream<char, std::char_traits<char> >&, char const*){}
+#endif
+
 // Identifies type: SLAC; JLAB; BCDMS; etc
 // NB: Pointer equality guarantees string equality
 const char * Cassandra::pszProton = "Proton";

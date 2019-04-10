@@ -2460,9 +2460,8 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		}
 	      else
 		{
-		  int j = 0;
-		  /* This test was really only necessary for debugging
 		  // Make sure we ended up with the same DataNodes in the same order
+		  int j = 0;
 		  for( DataSet * pDS : m_DataSets )
 		    for( DataNode * p : pDS->m_v )
 		      if( p != dsAll.m_v[j++] )
@@ -2470,17 +2469,17 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 			  bOK = false;
 			  LOG( Always, "*** " );
 			  p->Serialise( LOG_STREAM, 5 );
-			}*/
+			}
 		  if( !bOK )
 		    {
 		      LOG( Always, i << ": Error: DataSets are in different order" << endl );
 		      bNoError = false;
 		    }
-		  /*else if( j != ( int ) dsAll.CutSize() )
+		  else if( j != ( int ) dsAll.CutSize() )
 		    {
 		      LOG( Always, i << ": Error: DataSets are different size" << endl );
 		      bOK = false;
-		    }*/
+		    }
 		  else
 		    {
 		      LOG( Sometimes, i << ": DataSets are in same order" << endl );

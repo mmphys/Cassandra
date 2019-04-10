@@ -1,27 +1,18 @@
 # CERN root library config utility
-APFEL     := $(HOME)/bin/apfel-3.0.2
+APFEL     ?= $(HOME)/bin/apfel_gnu
 RC        := root-config
-#CXX      := g++
-#CXX       := g++-mp-8
-CXX       := clang++
+CXX       ?= g++
+#CXX       ?= clang++
 
-#CXXFLAGS := -std=c++17 -I/usr/local/include -I$(ROOTSYS)/include
 CXXFLAGS  := $(shell $(RC) --cflags)
-#CXXFLAGS  := $(subst -stdlib=libc++,,$(CXXFLAGS))
-#CXXFLAGS  := $(subst -m64,,$(CXXFLAGS))
-#CXXFLAGS  := $(subst -pthread,,$(CXXFLAGS))
-#CXXFLAGS  := $(subst -std=c++1z,-std=c++11,$(CXXFLAGS))
-CXXFLAGS  := $(CXXFLAGS) -Wall -Wextra -Werror
-CXXFLAGS  := $(CXXFLAGS) -I/usr/local/include -I$(APFEL)/include
+CXXFLAGS  := $(filter -I%, $(CXXFLAGS))
+CXXFLAGS  := -std=c++17 $(CXXFLAGS) -I/usr/local/include -I$(APFEL)/include
 
-LDDIRS    := $(shell lhapdf-config --libdir) $(APFEL)/lib $(ROOTSYS)
-LDFLAGS   := $(addprefix -L,$(sort $(LDDIRS)))
+LDFLAGS    := $(shell $(RC) --libs)
+LDFLAGS    := $(filter -L%, $(LDFLAGS))
+LDFLAGS   := $(LDFLAGS) $(addprefix -L,$(sort $(shell lhapdf-config --libdir) $(APFEL)/lib $(ROOTSYS)))
 
-LDLIBS    := $(shell $(RC) --libs)
-#LDLIBS    := $(subst -stdlib=libc++,,$(LDLIBS))
-#LDLIBS    := $(subst -m64,,$(LDLIBS))
-#LDLIBS    := $(subst -pthread,,$(LDLIBS))
-#LDLIBS    := $(subst -std=c++1z,-std=c++17,$(LDLIBS))
+LDLIBS     := $(filter -l%, $(shell $(RC) --libs))
 LDLIBS    := $(addprefix -l,APFEL LHAPDF) $(LDLIBS)
 
 srcfiles  := $(shell find . -type f -iname "*.cpp")

@@ -1,7 +1,7 @@
 # Ignore temporary test .pdf files I create
 Pass1/
 Pass2/
-Results/
+Results*/
 .depend
 *.o
 Cassandra

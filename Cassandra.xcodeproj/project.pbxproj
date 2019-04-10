@@ -243,13 +243,13 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					/opt/local/libexec/root6/include/root,
-					"/Users/s1786208/bin/apfel-3.0.2/include",
-					"/Users/s1786208/bin/LHAPDF-6.2.1/include",
+					/Users/s1786208/bin/apfel/include,
+					/Users/s1786208/bin/LHAPDF/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					/opt/local/libexec/root6/lib/root,
-					"/Users/s1786208/bin/apfel-3.0.2/lib",
-					"/Users/s1786208/bin/LHAPDF-6.2.1/lib",
+					/Users/s1786208/bin/apfel/lib,
+					/Users/s1786208/bin/LHAPDF/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -330,13 +330,13 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					/opt/local/libexec/root6/include/root,
-					"/Users/s1786208/bin/apfel-3.0.2/include",
-					"/Users/s1786208/bin/LHAPDF-6.2.1/include",
+					/Users/s1786208/bin/apfel/include,
+					/Users/s1786208/bin/LHAPDF/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					/opt/local/libexec/root6/lib/root,
-					"/Users/s1786208/bin/apfel-3.0.2/lib",
-					"/Users/s1786208/bin/LHAPDF-6.2.1/lib",
+					/Users/s1786208/bin/apfel/lib,
+					/Users/s1786208/bin/LHAPDF/lib,
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
