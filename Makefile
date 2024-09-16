@@ -1,23 +1,25 @@
 # CERN root library config utility
-APFEL     ?= $(HOME)/bin/apfel_gnu
+APFEL     ?= $(HOME)/.localMSc
 RC        := root-config
 CXX       ?= g++
 #CXX       ?= clang++
 
 CXXFLAGS  := $(shell $(RC) --cflags)
 CXXFLAGS  := $(filter -I%, $(CXXFLAGS))
-CXXFLAGS  := -std=c++17 $(CXXFLAGS) -I/usr/local/include -I$(APFEL)/include
+CXXFLAGS  := -std=c++17 $(CXXFLAGS) -I/usr/local/include -I$(shell lhapdf-config --incdir)
 
+RPATH     := -Xlinker -rpath -Xlinker $(GridPkg)/lib/gcc13
 LDFLAGS    := $(shell $(RC) --libs)
-LDFLAGS    := $(filter -L%, $(LDFLAGS))
-LDFLAGS   := $(LDFLAGS) $(addprefix -L,$(sort $(shell lhapdf-config --libdir) $(APFEL)/lib $(ROOTSYS)))
+#LDFLAGS    := $(filter -L%, $(LDFLAGS))
+LDFLAGS   := $(addprefix -L,$(sort $(shell lhapdf-config --libdir))) $(LDFLAGS) $(RPATH)
 
-LDLIBS     := $(filter -l%, $(shell $(RC) --libs))
+#LDLIBS     := $(filter -l%, $(shell $(RC) --libs))
 LDLIBS    := $(addprefix -l,APFEL LHAPDF) $(LDLIBS)
 
 srcfiles  := $(shell find . -type f -iname "*.cpp")
 objects   := $(patsubst %.cpp, %.o, $(srcfiles))
 
+.PHONY: all
 all: Cassandra Twiggy
 
 Cassandra: Cassandra.o CassMain.o

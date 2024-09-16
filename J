@@ -1,5 +1,7 @@
 #!/bin/bash
-echo Performing BCDMS run
-Exec="./Cassandra data/j* -r101 -lPass1/J"
-Echo $Exec
-$Exec
+OutDir=Pass1
+mkdir -p "$OutDir"
+echo Performing JLAB run
+Cmd="./Cassandra data/j* -r101 -l'$OutDir'/J"
+echo "$Cmd"
+eval $Cmd &

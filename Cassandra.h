@@ -27,6 +27,7 @@
 #include "TGraphErrors.h"
 #include "TH2D.h"
 #include "TLatex.h"
+#include "TLine.h"
 #include "TLegend.h"
 #include "TMath.h"
 #include "TMatrixD.h"
