@@ -60,6 +60,12 @@
             ReferencedContainer = "container:Cassandra.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "&apos;-lResults/NNPDF/Proton_Low/PLN&apos; Pass2/Proton_Low_* Pass2/NNPDF/Proton_Low_* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -aa0.7,1 -ab0.6,2.3 -ac-0.6,-0.2 -ad-2.,-1.45 -wl5 -wu12.5 -n15"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

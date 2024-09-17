@@ -6,7 +6,6 @@ OutDir=Pass2
 
 function ProcessFile()
 {
-(
   # Get name of OutFile
   local OutFile="$OutDir/"
   if [ -v Suffix ]; then
@@ -22,14 +21,15 @@ function ProcessFile()
     return
   fi
   # How many records are there
-  Count=$(awk "/$Nucleon/{++n}; END {print n}" "$InFile")
+  local Count=$(awk "/^$Nucleon/{++n}; END {print n}" "$InFile")
   echo " $Count $OutFile"
   # Write the header
-  awk "/Count/{print \"             Count : $Count\";next};{print};!NF{exit}" \
-      "$InFile" > "$OutFile"
+  local Cmd="NR==1{print \$0,\"$Nucleon\";next}"
+  Cmd+=";/Count/{print \"             Count : $Count\";next}"
+  Cmd+=';{print};/^Nucleon/{exit}'
+  awk "$Cmd" "$InFile" > "$OutFile"
   # Now write selected records
-  awk "/$Nucleon/ {print}" "$InFile" >> "$OutFile"
-)
+  awk "/$Nucleon/" "$InFile" >> "$OutFile"
 }
 
 # Main loop - process each file, breaking into parts

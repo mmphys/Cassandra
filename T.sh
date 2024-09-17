@@ -3,22 +3,14 @@
 DATAROOT="Pass2"
 RESULTSROOT="Results"
 
-#DATASET can be Low, High or neither (which processes all data)
-DATASET=Low
-#DATASET=High
+#DATASET can be Low, High or All (which processes all data)
+#TARGET can be Proton, Deuteron or All (which processes all data)
+#SLAC_TYPE selects whether/(which version of) the SLAC data are included:
+# i.e. NNPDF, reanalyzed or 0 (Don't include any SLAC data)
 
-#TARGET can be Proton, Deuteron or neither (which processes all data)
-TARGET=Proton
-#TARGET=Deuteron
-
-#Choose one of the following to select whether/(which version of) the SLAC data are included
-SLAC_TYPE=NNPDF
-#SLAC_TYPE=reanalyzed
-#SLAC_TYPE=0  #Don't include any SLAC data
-
-PARAMS="-l4 -bx0.05 -bq2 -o3 -x0 -p"
-
-#Validate Parameters (SLAC_TYPE, DATASET and TARGET)
+function Process()
+{
+#Validate Parameters (DATASET, TARGET and SLAC_TYPE)
 SetTarget=0
 if [ "$DATASET" == High ] || [ "$DATASET" == Low ]
 then
@@ -32,12 +24,15 @@ then
 else
     TARGET=All
 fi
-if [ "$SLAC_TYPE" != reanalyzed ] && [ "$SLAC_TYPE" != 0 ]
+if [ "$SLAC_TYPE" != reanalyzed ] && [ "$SLAC_TYPE" != NNPDF ]
 then
-    SLAC_TYPE="NNPDF"
+    SLAC_TYPE=0
 fi
 
+local PARAMS="-l4 -bx0.05 -bq2 -o3 -x0 -p"
+
 # Select an appropriate cutoff
+local CUTOFF
 if [ "$DATASET" == High ]
 then
     CUTOFF="-wl12.5 -wu17 -n9"
@@ -56,6 +51,7 @@ else
 fi
 
 # Select an appropriate model
+local MODEL
 if [ "$DATASET" == Low ]
 then
     if [ "$TARGET" == Proton ]
@@ -106,6 +102,7 @@ else
 fi
 
 # Translate parameters to source files
+local DATA_FILE_NAME
 if [ $SetTarget -eq 2 ]
 then
    DATA_FILE_NAME="${TARGET}_${DATASET}_*"
@@ -119,17 +116,36 @@ else
      DATA_FILE_NAME="*_${DATASET}*"
 fi
 
-DATA="$DATAROOT/${DATA_FILE_NAME}"
-if [ $SLAC_TYPE != 0 ]
-then
-    DATA="$DATA $DATAROOT/${SLAC_TYPE}/${DATA_FILE_NAME}"
-fi
+local DATA="$DATAROOT/${DATA_FILE_NAME}"
+[ $SLAC_TYPE != 0 ] && DATA+=" $DATAROOT/${SLAC_TYPE}/${DATA_FILE_NAME}"
 
 # Make sure the results directory exists
-mkdir -p ${RESULTSROOT}/${SLAC_TYPE}/${TARGET}_${DATASET}
+local Dir="$SLAC_TYPE/${TARGET}_${DATASET}"
+mkdir -p "$RESULTSROOT/$Dir"
 
 # Now run
-echo Performing Combined $SLAC_TYPE $TARGET $DATASET run
-Exec="./Twiggy -l${RESULTSROOT}/${SLAC_TYPE}/${TARGET}_${DATASET}/${TARGET:0:1}${DATASET:0:1}${SLAC_TYPE:0:1} $DATA $PARAMS $MODEL $CUTOFF"
-echo $Exec
-$Exec
+local Combo="${TARGET:0:1}${DATASET:0:1}${SLAC_TYPE:0:1}"
+local File="$RESULTSROOT/$Dir/$Combo"
+echo "Performing Combined $SLAC_TYPE $TARGET $DATASET run"
+local Cmd="./Twiggy '-l$File' $DATA $PARAMS $MODEL $CUTOFF"
+echo " $Cmd"
+eval "$Cmd"
+(
+  cd "${RESULTSROOT}"
+  tar -czf "$Combo.tar" "$Dir/"
+)
+}
+
+# Main
+
+for DATASET in Low High All
+do
+for TARGET in Proton Deuteron #All
+do
+for SLAC_TYPE in NNPDF reanalyzed 0
+do
+  Process &
+done
+done
+done
+wait
