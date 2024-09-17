@@ -345,6 +345,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-lAPFEL",
 					"-lLHAPDF",
@@ -415,7 +416,7 @@
 				68086B9C21C5BBF300D152AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		68086B9D21C5BBF300D152AE /* Build configuration list for PBXNativeTarget "Cassandra" */ = {
 			isa = XCConfigurationList;
@@ -424,7 +425,7 @@
 				68086B9F21C5BBF300D152AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		68B1DEE12234A77B00D41505 /* Build configuration list for PBXNativeTarget "Twiggy" */ = {
 			isa = XCConfigurationList;
@@ -433,7 +434,7 @@
 				68B1DEE32234A77B00D41505 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
