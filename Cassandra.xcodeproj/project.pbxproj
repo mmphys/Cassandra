@@ -243,13 +243,15 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					/opt/local/libexec/root6/include/root,
-					/Users/s1786208/bin/apfel/include,
-					/Users/s1786208/bin/LHAPDF/include,
+					"$(HOME)/.localMSc/include",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					/opt/local/libexec/root6/lib/root,
+					/opt/local/lib/libgcc,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					/opt/local/libexec/root6/lib/root,
-					/Users/s1786208/bin/apfel/lib,
-					/Users/s1786208/bin/LHAPDF/lib,
+					"$(HOME)/.localMSc/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -330,13 +332,15 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
 					/opt/local/libexec/root6/include/root,
-					/Users/s1786208/bin/apfel/include,
-					/Users/s1786208/bin/LHAPDF/include,
+					"$(HOME)/.localMSc/include",
+				);
+				LD_RUNPATH_SEARCH_PATHS = (
+					/opt/local/libexec/root6/lib/root,
+					/opt/local/lib/libgcc,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					/opt/local/libexec/root6/lib/root,
-					/Users/s1786208/bin/apfel/lib,
-					/Users/s1786208/bin/LHAPDF/lib,
+					"$(HOME)/.localMSc/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
