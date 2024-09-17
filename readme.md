@@ -125,15 +125,20 @@ There are two project executables:
 
 ## **Cassandra** (pass 1)
 
-Run the scripts `B`, `J` and `S` which outputs to `Pass1`
+Run the scripts `B.sh`, `J.sh` and `S.sh` which outputs to `Pass1`
 
 ## Create input for pass 2
 
 Run the script `MakePass2.sh` which creates `Pass2` from `Pass1`
 
-### Manually (*deprecated*)
+### Manually create the Pass2 directory (*deprecated*)
 
-Manually create the Pass2 directory. For each .F2 file created in pass 1, make two copies of the file in Pass2 directory, one for Deuteron data only and one for Proton data only. Update the file names to match the convention for pass 2, i.e.:
+For each .F2 file created in pass 1, make two copies of the file in Pass2 directory:
+
+* one for Deuteron data only
+* one for Proton data only
+
+Update the file names to match the convention for pass 2, i.e.:
 
 * Deuteron_High_BCDMS_F2
 * Deuteron_Low_BCDMS_F2
@@ -150,7 +155,7 @@ Manually create the Pass2 directory. For each .F2 file created in pass 1, make t
 * reanalyzed/Proton_High_SLAC_reanalyzed_F2
 * reanalyzed/Proton_Low_SLAC_reanalyzed_F2
 
-Manually edit the files:
+Manually edit each file:
 
 1. Delete the data you don't want (Deuteron or Proton data)
 2. Append the target name to the end of the first line in the header, e.g. `Cassandra Prediction BCDMS F2 Proton`
@@ -158,7 +163,7 @@ Manually edit the files:
 
 ## **Twiggy** (pass 2)
 
-Edit the script T to choose SLAC_TYPE, DATASET and TARGET, then run the script T
+Edit the script `T.sh` to choose SLAC_TYPE, DATASET and TARGET, then run the script `T.sh`
 
 There are plenty of other parameters in the script you can change - once you are up-to-speed, e.g. you can specify a specific model (created in Pass1 at one specific cut) to run against every cut in pass 2 by uncommenting this line:
 

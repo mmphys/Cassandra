@@ -35,6 +35,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		27BA4CB72C99BA9400EFE5DB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		27BA4CB82C99BBB400EFE5DB /* MakePass2.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = MakePass2.sh; sourceTree = "<group>"; };
+		27BA4CB92C99BDFF00EFE5DB /* B.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = B.sh; sourceTree = "<group>"; };
+		27BA4CBA2C99BDFF00EFE5DB /* J.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = J.sh; sourceTree = "<group>"; };
+		27BA4CBB2C99BDFF00EFE5DB /* S.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = S.sh; sourceTree = "<group>"; };
+		27BA4CBC2C99BDFF00EFE5DB /* T.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = T.sh; sourceTree = "<group>"; };
 		68086B9621C5BBF300D152AE /* Cassandra */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Cassandra; sourceTree = BUILT_PRODUCTS_DIR; };
 		68086BA021C5BC6100D152AE /* CassMain.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CassMain.h; sourceTree = "<group>"; usesTabs = 1; };
 		68086BA121C5BC6100D152AE /* Twiggy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Twiggy.cpp; sourceTree = "<group>"; usesTabs = 1; };
@@ -44,10 +50,6 @@
 		68086BA521C5BC6200D152AE /* Logger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; usesTabs = 1; };
 		68086BA621C5BC6200D152AE /* Cassandra.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Cassandra.h; sourceTree = "<group>"; usesTabs = 1; };
 		682B91D9223430B900EEB67C /* Makefile */ = {isa = PBXFileReference; indentWidth = 8; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; usesTabs = 1; };
-		6852EDD62234809400FBA8BE /* T */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = text.script.sh; path = T; sourceTree = "<group>"; usesTabs = 1; };
-		6852EDD72234809400FBA8BE /* B */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = B; sourceTree = "<group>"; };
-		6852EDD82234809400FBA8BE /* S */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = S; sourceTree = "<group>"; };
-		6852EDD92234809400FBA8BE /* J */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = J; sourceTree = "<group>"; };
 		68B1DEE42234A77B00D41505 /* Twiggy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Twiggy; sourceTree = BUILT_PRODUCTS_DIR; };
 		68E582E122352AAC00027DE8 /* readme.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = readme.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -73,11 +75,13 @@
 		68086B8D21C5BBF300D152AE = {
 			isa = PBXGroup;
 			children = (
+				27BA4CB72C99BA9400EFE5DB /* .gitignore */,
 				68E582E122352AAC00027DE8 /* readme.md */,
-				6852EDD72234809400FBA8BE /* B */,
-				6852EDD92234809400FBA8BE /* J */,
-				6852EDD82234809400FBA8BE /* S */,
-				6852EDD62234809400FBA8BE /* T */,
+				27BA4CB92C99BDFF00EFE5DB /* B.sh */,
+				27BA4CBA2C99BDFF00EFE5DB /* J.sh */,
+				27BA4CBB2C99BDFF00EFE5DB /* S.sh */,
+				27BA4CB82C99BBB400EFE5DB /* MakePass2.sh */,
+				27BA4CBC2C99BDFF00EFE5DB /* T.sh */,
 				682B91D9223430B900EEB67C /* Makefile */,
 				68086BA321C5BC6200D152AE /* Cassandra.cpp */,
 				68086BA621C5BC6200D152AE /* Cassandra.h */,
