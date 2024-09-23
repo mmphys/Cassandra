@@ -558,7 +558,7 @@ In addition to the statistical and systematic errors published, each of the pape
 
 The \emph{covariance}, $\sigma_{ij}$, between any two data points $x_i$ and $x_j$ defined as \cite[pg 26]{James}:
 \begin{align}
-\label{eq:theory_covar} \sigma_{ij} &= \expval{x_i - \expval{x_i}} \expval{x_j - \expval{x_j}}
+\label{eq:theory_covar} \sigma_{ij} &= \expval{ \lr{x_i - \expval{x_i}} \lr{x_j - \expval{x_j}}}
 \intertext{and we construct the \emph{experimental covariance matrix}, $\sigma_{ij}$:}
 \label{eq:theory_exp_covar} \sigma_{ij} &= \delta_{ij} \lr{\sigma_{\textrm{stat},i} \sigma_{\textrm{stat},j}}
 + \sigma_{\textrm{sys},i} \sigma_{\textrm{sys},j}
