@@ -57,6 +57,7 @@ namespace Cassandra
 
   struct CutChi
   {
+    static constexpr int NoSeq{ std::numeric_limits<int>::min() };
     int    iSeq;
     double W2;
     double Q2;
@@ -64,6 +65,20 @@ namespace Cassandra
     double Chi;
     double ChiTwist;
     double ChiTwistReweight;
+    CutChi( int Seq, double w2, double q2, bool Strict ) : iSeq{Seq},W2{w2},Q2{q2},bStrict{Strict} {}
+    std::string SeqString( const char *pszPrefix ) const
+    {
+      std::string s;
+      if( pszPrefix )
+	s = pszPrefix;
+      if( iSeq != NoSeq )
+      {
+	if( !s.empty() )
+	  s.append( 1, '_' );
+	s.append( std::to_string( iSeq ) );
+      }
+      return s;
+    }
   };
 
   class DataManager
@@ -142,6 +157,10 @@ namespace Cassandra
 			const std::string &sCut,
 			const std::string &sCounts ) const;
     bool LoadHTModel( std::vector<HT> &ht, int iModelNum ) const;
+    // Plot the data set and save useful info
+    void PlotDataSet( DataSet &ds, const char *pszOutFilePrefix, const CutChi &cc,
+		      int *piNumDataSets = nullptr, std::string *psCounts = nullptr,
+		      std::string *psCuts = nullptr );
     bool MakeOnePrediction( DataSet & ds, const char * pszOutFilePrefix,
 			    CutChi & cc, size_t SampleSize, bool bShowCut );
     bool LoadData( const char * fileName );

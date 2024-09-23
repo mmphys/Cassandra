@@ -21,6 +21,30 @@ const char * Cassandra::pszBoNuS = "JLAB_BoNuS";
 std::unique_ptr<std::ofstream> Cassandra::Global_Log_File;
 Cassandra::LogLevel Cassandra::Global_Log_Level = Cassandra::LogLevel::Mostly;
 
+// Read a vector of floating points, ignoring underflow errors
+template <typename T>
+std::istream& Cassandra::operator>>( std::istream& is, std::vector<T> &v )
+{
+  if( is )
+  {
+    for( unsigned int i = 0; i < v.size(); ++i )
+    {
+      is >> v[i];
+      if( !is )
+      {
+	if( v[i] )
+	  is.clear();
+	if( !is )
+	  break;
+      }
+    }
+  }
+  return is;
+}
+
+template std::istream& Cassandra::operator>>( std::istream& is, std::vector<float> &v );
+template std::istream& Cassandra::operator>>( std::istream& is, std::vector<double> &v );
+
 // Serialise a TMatrixD to an output stream
 
 std::ostream& Cassandra::operator<<(std::ostream& os, const TMatrixD &m)
@@ -1908,4 +1932,29 @@ bool Cassandra::SLACSet::ParseLine(std::stringstream & ss, bool &bContinue)
       break;
     }
   return bPrint;
+}
+
+std::string Cassandra::GetCommandLine( int argc, char * argv[] )
+{
+  std::string s;
+  typename std::string::size_type pos;
+  for( int i = 0; i < argc; ++i )
+  {
+    std::string Arg{ argv[i] };
+    if( i )
+      s.append( 1, ' ' );
+    else
+    {
+      pos = Arg.find_last_of( '/' );
+      if( pos != std::string::npos )
+	Arg.erase( 0, pos + 1 );
+    }
+    const bool bSpace{ Arg.find_first_of( " \t\n\r" ) != std::string::npos };
+    if( bSpace )
+      s.append( 1, '"' );
+    s.append( Arg );
+    if( bSpace )
+      s.append( 1, '"' );
+  }
+  return s;
 }

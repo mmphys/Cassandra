@@ -35,6 +35,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		27089CE42C9F09BA004949B2 /* MakeGraphs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = MakeGraphs.sh; sourceTree = "<group>"; };
 		27BA4CB72C99BA9400EFE5DB /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		27BA4CB82C99BBB400EFE5DB /* MakePass2.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = MakePass2.sh; sourceTree = "<group>"; };
 		27BA4CB92C99BDFF00EFE5DB /* B.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = B.sh; sourceTree = "<group>"; };
@@ -81,6 +82,7 @@
 				27BA4CBA2C99BDFF00EFE5DB /* J.sh */,
 				27BA4CBB2C99BDFF00EFE5DB /* S.sh */,
 				27BA4CB82C99BBB400EFE5DB /* MakePass2.sh */,
+				27089CE42C9F09BA004949B2 /* MakeGraphs.sh */,
 				27BA4CBC2C99BDFF00EFE5DB /* T.sh */,
 				682B91D9223430B900EEB67C /* Makefile */,
 				68086BA321C5BC6200D152AE /* Cassandra.cpp */,
@@ -93,6 +95,7 @@
 				68086B9721C5BBF300D152AE /* Products */,
 			);
 			sourceTree = "<group>";
+			tabWidth = 8;
 		};
 		68086B9721C5BBF300D152AE /* Products */ = {
 			isa = PBXGroup;

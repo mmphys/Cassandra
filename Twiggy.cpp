@@ -1098,27 +1098,28 @@ bool Cassandra::DataManager::LoadHTModel( std::vector<HT> &ht, int iModelNum ) c
   bool bFirst = true;
   std::ifstream is;
   ht.clear();
+  std::string sModelFileName( m_pszModelPrefix );
+  std::size_t Len{ sModelFileName.size() + 1 };
   do
     {
-      std::string sModelFileName( m_pszModelPrefix );
-      if( bFirst )
-	{
-	  // See whether model number has been specified
-	  bFirst = false;
-	  iModelNum++;
-	}
-      else
-	{
-	  sModelFileName.append( 1, '_' );
-	  sModelFileName.append( std::to_string( iModelNum ) );
-	}
+      if( !bFirst )
+      {
+	sModelFileName.resize( Len );
+	sModelFileName.append( std::to_string( iModelNum ) );
+      }
       sModelFileName.append( m_szModelSuffix );
       is.open( sModelFileName );
       if( is.is_open() )
 	{
 	  bOK = true;
-	  LOG( Mostly, "Loaded model " << sModelFileName << endl );
+	  LOG( Mostly, "Opened model " << sModelFileName << endl );
 	}
+      else if( bFirst )
+      {
+	bFirst = false;
+	sModelFileName[Len - 1] = '_';
+	iModelNum++;
+      }
     }
   while( !bOK && iModelNum-- );
   if( !bOK )
@@ -1129,33 +1130,38 @@ bool Cassandra::DataManager::LoadHTModel( std::vector<HT> &ht, int iModelNum ) c
       if( !std::getline( is, sLine ) || sLine.compare( m_szModelHeader ) )
 	{
 	  bOK = false;
-	  LOG( Always, "Model " << iModelNum << " header invalid" << endl );
+	  LOG( Always, "Model " << sModelFileName << " header invalid" << endl );
 	}
       else
 	{
 	  int iSeq = 0;
+	  std::vector<double> vBuf( 6 );
 	  while( bOK && std::getline( is, sLine ) )
 	    {
-	      std::stringstream ss( sLine );
+	      std::istringstream ss( sLine );
 	      int iFileSeq;
 	      HT htFile;
-	      htFile.chisq = -9.9e99;
-	      ss >> iFileSeq >> htFile.p[0] >> htFile.p[1] >> htFile.p[2] >> htFile.p[3]
-		 >> htFile.weight >> htFile.chisq;
-	      if( iFileSeq != iSeq || htFile.chisq == -9.9e99)
+	      ss >> iFileSeq >> vBuf;
+	      if( !ss || iFileSeq != iSeq )
 		{
-		  LOG( Always, "Error reading model record " << iSeq << endl );
+		  LOG(Always, "Error reading model " << sModelFileName << " record " << iSeq << endl);
 		  bOK = false;
 		}
 	      else
 		{
+		  htFile.p[0] = vBuf[0];
+		  htFile.p[1] = vBuf[1];
+		  htFile.p[2] = vBuf[2];
+		  htFile.p[3] = vBuf[3];
+		  htFile.weight = vBuf[4];
+		  htFile.chisq = vBuf[5];
 		  ht.push_back( htFile );
 		  iSeq++;
 		}
 	    }
 	  if( bOK && iSeq == 0 )
 	    {
-	      LOG( Always, "Model " << iModelNum << " is empty" << endl );
+	      LOG( Always, "Model " << sModelFileName << " is empty" << endl );
 	      bOK = false;
 	    }
 	  if( !bOK )
@@ -1166,112 +1172,87 @@ bool Cassandra::DataManager::LoadHTModel( std::vector<HT> &ht, int iModelNum ) c
   return bOK;
 }
 
-// Make a prediction
-
-bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOutFilePrefix, CutChi & cc,
-						size_t SampleSize, bool /*bShowCut*/ )
+void Cassandra::DataManager::PlotDataSet( DataSet &ds, const char * pszOutFilePrefix,
+					  const CutChi &cc,
+					  int *piNumDataSets,
+					  std::string *psCounts,
+					  std::string *psCuts )
 {
-  const char sp = ' ';
-  static const char szSep[] = ": ";
-
-  const char * pszCut = Cassandra_StrictString( cc.bStrict );
-  std::stringstream ssCut;
-  ssCut << "Q**2" << pszCut << fixed << setprecision(1) << cc.Q2 << ", W**2" << pszCut << cc.W2;
-
-  std::string sFileNameSeq( pszOutFilePrefix );
-  sFileNameSeq.append( 1, '_' );
-  sFileNameSeq.append( std::to_string( cc.iSeq ) );
-
-  m_ht.m_Model.clear();
-
-  // Useful to print this again just before we dump the final lists
-  LOG( Sometimes, cc.iSeq << szSep << ds.Name() << " data set contains "
-       << ds.size() << " data points." << endl);
-
-  // Dump the lists
-  ds.DumpList(SampleSize);
-
-  // Clear the combined covariance matrix
-  for( int i = 0 ; i < ( int ) ds.CutSize() ; i++ )
-    for( int j = 0 ; j < ( int ) ds.CutSize() ; j++ )
-      {
-	ds.m_MCovar[i][j] = 0.;
-	ds.m_MCovarInv[i][j] = 0.;
-      }
-  // Construct the covariance matrix from the block diagonals of the component matrices
-  int iNumData = 0;
-  int iNumDataSets = 0;
-  std::string sCounts;
+  // Fill in user-supplied variables (otherwise use local)
+  int iNumDataSetsLocal;
+  std::string sCountsLocal;
+  std::string sCutsLocal;
+  int &iNumDataSets{ piNumDataSets ? *piNumDataSets : iNumDataSetsLocal };
+  std::string &sCounts{ psCounts ? *psCounts : sCountsLocal };
+  std::string &sCuts{ psCuts ? *psCuts : sCutsLocal };
+  
+  // Get a string describing cuts
+  {
+    const char * pszCut = Cassandra_StrictString( cc.bStrict );
+    std::stringstream ssCut;
+    ssCut << "Q**2" << pszCut << fixed << setprecision(1) << cc.Q2 << ", W**2" << pszCut << cc.W2;
+    sCuts = ssCut.str();
+  }
+  
+  // Get a string describing counts
+  iNumDataSets = 0;
   bool bFirst = true;
   for( DataSet * pDS : m_DataSets )
-    {
-      if( pDS->CutSize() )
-	{
-	  // Construct a string describing components of DataSet
-	  if( bFirst )
-	    bFirst = false;
-	  else
-	    sCounts.append( ", " );
-	  sCounts.append( pDS->Name() );
-	  sCounts.append( "=" );
-	  sCounts.append( std::to_string( pDS->CutSize() ) );
-	  // Construct the covariance matrix from the block diagonals of the component matrices
-	  pDS->ConstructCovar();
-	  for( int i = 0 ; i < ( int ) pDS->CutSize() ; i++ )
-	    for( int j = 0 ; j < ( int ) pDS->CutSize() ; j++ )
-	      {
-		ds.m_MCovar   [iNumData + i][iNumData + j] = pDS->m_MCovar[i][j];
-		ds.m_MCovarInv[iNumData + i][iNumData + j] = pDS->m_MCovarInv[i][j];
-	      }
-	  iNumData += pDS->CutSize();
-	  iNumDataSets++;
-	}
-    }
-  if( iNumData != ( int ) ds.CutSize() )
-    {
-      LOG( Always, cc.iSeq << ": Error constructing combined " << ds.CutSize() << "x" << ds.CutSize()
-	   << " covariance matrix - component data sets only have " << iNumData
-	   << " elements" << endl );
-      return false;
-    }
-  LOG( Often, cc.iSeq << ": Combined covariance matrix is " << iNumData << "x" << iNumData << endl );
-
-  // Plot the data sets
   {
-    std::string sFileName( sFileNameSeq );
+    if( pDS->CutSize() )
+    {
+      // Construct a string describing components of DataSet
+      if( bFirst )
+	bFirst = false;
+      else
+	sCounts.append( ", " );
+      sCounts.append( pDS->Name() );
+      sCounts.append( "=" );
+      sCounts.append( std::to_string( pDS->CutSize() ) );
+      iNumDataSets++;
+    }
+  }
+  if( !iNumDataSets )
+  {
+    LOG( Always, "No data sets to plot" << endl )
+  }
+  else
+  {
+    // Plot
+    std::string sFileName{ pszOutFilePrefix };
     sFileName.append( "_DataSet.pdf" );
     LOG( Mostly, "Creating " << sFileName << endl );
     auto mg = new TMultiGraph();
     int c = 0;
     for( DataSet * pDS : m_DataSets )
       if( pDS->CutSize() )
+      {
+	static const int iMarkerStyles[] = { 22, 23, 29, 33, 39, 41, 47, 48 };
+	double x[pDS->CutSize()];
+	double y[pDS->CutSize()];
+	for( int i = 0 ; i < ( int ) pDS->CutSize() ; i++ )
 	{
-	  static const int iMarkerStyles[] = { 22, 23, 29, 33, 39, 41, 47, 48 }; 
-	  double x[pDS->CutSize()];
-	  double y[pDS->CutSize()];
-	  for( int i = 0 ; i < ( int ) pDS->CutSize() ; i++ )
-	    {
-	      x[i] = pDS->m_v[i]->m_x + ( c - iNumDataSets / 2. ) * 0.002;
-	      y[i] = pDS->m_v[i]->m_Q2;
-	    }
-	  auto gr = new TGraph( ( Int_t ) pDS->CutSize(), x, y );
-	  gr->SetTitle( pDS->Name() );
-	  gr->SetMarkerStyle( iMarkerStyles[c % 8] );
-	  int iColor;
-	  if( c <= 2 )
-	    iColor = c * 2 + 2;
-	  else if( c <= 6 )
-	    iColor = c * 2 - 3;
-	  else
-	    iColor = c + 13;
-	  gr->SetMarkerColor( iColor );
-	  gr->SetMarkerSize( 0.5 );
-	  mg->Add( gr );
-	  c++;
+	  x[i] = pDS->m_v[i]->m_x + ( c - iNumDataSets / 2. ) * 0.002;
+	  y[i] = pDS->m_v[i]->m_Q2;
 	}
+	auto gr = new TGraph( ( Int_t ) pDS->CutSize(), x, y );
+	gr->SetTitle( pDS->Name() );
+	gr->SetMarkerStyle( iMarkerStyles[c % 8] );
+	int iColor;
+	if( c <= 2 )
+	  iColor = c * 2 + 2;
+	else if( c <= 6 )
+	  iColor = c * 2 - 3;
+	else
+	  iColor = c + 13;
+	gr->SetMarkerColor( iColor );
+	gr->SetMarkerSize( 0.5 );
+	mg->Add( gr );
+	c++;
+      }
     std::stringstream ssTitle;
-    ssTitle << m_pszTarget << " data surviving cuts at " << ssCut.str().c_str()
-	    << "; X (" << ds.CutSize() << " data points, " << sCounts.c_str() << "); Q**2 / GeV**2";
+    ssTitle << m_pszTarget << " data surviving cuts at " << sCuts
+    << "; X (" << ds.CutSize() << " data points, " << sCounts << "); Q**2 / GeV**2";
     mg->SetTitle( ssTitle.str().c_str() );
     TCanvas *c1 = new TCanvas("c1","Unused title - was ss1",200,10,700,500);
     c1->SetGrid();
@@ -1288,6 +1269,65 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
     delete mg;
     delete c1;
   }
+}
+
+// Make a prediction
+
+bool Cassandra::DataManager::MakeOnePrediction( DataSet &ds, const char *pszOutFilePrefix, CutChi &cc,
+						size_t SampleSize, bool /*bShowCut*/ )
+{
+  const char sp = ' ';
+  static const char szSep[] = ": ";
+
+  const std::string sFileNameSeq{ cc.SeqString( pszOutFilePrefix ) };
+
+  m_ht.m_Model.clear();
+
+  // Useful to print this again just before we dump the final lists
+  LOG( Sometimes, cc.iSeq << szSep << ds.Name() << " data set contains "
+       << ds.size() << " data points." << endl);
+
+  // Dump the lists
+  ds.DumpList(SampleSize);
+
+  // Plot the data sets
+  int iNumDataSets;
+  std::string sCounts;
+  std::string sCuts;
+  PlotDataSet( ds, sFileNameSeq.c_str(), cc, &iNumDataSets, &sCounts, &sCuts );
+
+  // Clear the combined covariance matrix
+  for( int i = 0 ; i < ( int ) ds.CutSize() ; i++ )
+    for( int j = 0 ; j < ( int ) ds.CutSize() ; j++ )
+      {
+	ds.m_MCovar[i][j] = 0.;
+	ds.m_MCovarInv[i][j] = 0.;
+      }
+  // Construct the covariance matrix from the block diagonals of the component matrices
+  int iNumData = 0;
+  for( DataSet * pDS : m_DataSets )
+    {
+      if( pDS->CutSize() )
+	{
+	  // Construct the covariance matrix from the block diagonals of the component matrices
+	  pDS->ConstructCovar();
+	  for( int i = 0 ; i < ( int ) pDS->CutSize() ; i++ )
+	    for( int j = 0 ; j < ( int ) pDS->CutSize() ; j++ )
+	      {
+		ds.m_MCovar   [iNumData + i][iNumData + j] = pDS->m_MCovar[i][j];
+		ds.m_MCovarInv[iNumData + i][iNumData + j] = pDS->m_MCovarInv[i][j];
+	      }
+	  iNumData += pDS->CutSize();
+	}
+    }
+  if( iNumData != ( int ) ds.CutSize() )
+    {
+      LOG( Always, cc.iSeq << ": Error constructing combined " << ds.CutSize() << "x" << ds.CutSize()
+	   << " covariance matrix - component data sets only have " << iNumData
+	   << " elements" << endl );
+      return false;
+    }
+  LOG( Often, cc.iSeq << ": Combined covariance matrix is " << iNumData << "x" << iNumData << endl );
 
   // Calculate chi squared goodness of fit before applying HT model
   double chisq = 0.0;
@@ -1470,7 +1510,7 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
 		      sName.append( szSuffix );
 		      std::stringstream ss;
 		      ss << fixed << setprecision(0)
-			 << tp[i]->GetTitle() << " (" << ssCut.str() << ", "
+			 << tp[i]->GetTitle() << " (" << sCuts << ", "
 			 << dNeff << " effective replicas)";
 		      tp[i]->SetTitle( ss.str().c_str() );
 		      tp[i]->Draw("hist");
@@ -1564,7 +1604,7 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
   sChartTitle.append( ds.Name() );
   std::string sChartName( sFileNameSeq );
   sChartName.append( "_CorrelTheory.pdf" );
-  PlotCorrelation( MTheoryCorrel, dNeff, sChartTitle, sChartName, ssCut.str(), sCounts );
+  PlotCorrelation( MTheoryCorrel, dNeff, sChartTitle, sChartName, sCuts, sCounts );
 
   // Create and plot experiment-correlation matrix
   TMatrixDSym MExptCorrel( iNumData );
@@ -1580,7 +1620,7 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
   sChartTitle.append( ds.Name() );
   sChartName = sFileNameSeq;
   sChartName.append( "_CorrelExpt.pdf" );
-  PlotCorrelation( MExptCorrel, dNeff, sChartTitle, sChartName, ssCut.str(), sCounts );
+  PlotCorrelation( MExptCorrel, dNeff, sChartTitle, sChartName, sCuts, sCounts );
 
   // Create and plot theory-experiment-correlation matrix
   TMatrixDSym MExptTheoryCorrel( iNumData );
@@ -1597,7 +1637,7 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
   sChartTitle.append( ds.Name() );
   sChartName = sFileNameSeq;
   sChartName.append( "_CorrelExptTheory.pdf" );
-  PlotCorrelation( MExptTheoryCorrel, dNeff, sChartTitle, sChartName, ssCut.str(), sCounts );
+  PlotCorrelation( MExptTheoryCorrel, dNeff, sChartTitle, sChartName, sCuts, sCounts );
 
   // Now calculate chi squared goodness of fit for HT model
   double chisqHT = 0.;
@@ -1646,15 +1686,15 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
   }
 
   // Plot the higher twist
-  PlotHT( ds, sFileNameSeq, ssCut.str(), HTMean, MTheoryCovar );
+  PlotHT( ds, sFileNameSeq, sCuts, HTMean, MTheoryCovar );
 
   // Create graphs of the data - this time using the model
   CreateGraphs( ds.m_MCovar, MTheoryCovar, ds.m_v, dNeff,
-		ds.Name(), sFileNameSeq, ssCut.str(), sCounts, HTMean );
+		ds.Name(), sFileNameSeq, sCuts, sCounts, HTMean );
 
   // Plot the diagonal experimental and theoretical errors
   PlotDiagonals( ds.m_MCovar, MTheoryCovar, ds.m_v, dNeff,
-		 ds.Name(), sFileNameSeq, ssCut.str(), sCounts );
+		 ds.Name(), sFileNameSeq, sCuts, sCounts );
 
   // If I'm running a pre-existing model with more data, determine effect on PDFs
   if( m_pszModelPrefix && ds.m_iNumReplicas > 1 )
@@ -1955,14 +1995,14 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
 		    std::stringstream sTitle;
 		    sTitle << Partons[c].m_szChartName << ' ' << ds.Name()
 			   << " (Q=" << fixed << setprecision(1) << m_dQChartScale << " GeV); X ("
-			   << ds.CutSize() << " data points, " << ssCut.str().c_str()
+			   << ds.CutSize() << " data points, " << sCuts.c_str()
 			   << "); x * PDF (NNPDF 3.1=1)";
 		    mg->SetTitle( sTitle.str().c_str() );
 		    mg->Draw( "A3 L" );
 		    c1->Update();
 		    mg->SetMinimum( 0.8 );
 		    mg->SetMaximum( 1.3 );
-		    //TLegend * pLeg = c1->BuildLegend( 0.4, 0.74, 0.6, 0.9 );
+		    TLegend * pLeg = c1->BuildLegend( 0.4, 0.74, 0.6, 0.9 );
 
 		    //sChartTitle = Partons[c].m_szChartName;
 		    //sChartTitle.append( ds.Name() );
@@ -1976,6 +2016,8 @@ bool Cassandra::DataManager::MakeOnePrediction( DataSet & ds, const char * pszOu
 		    sFileName.append( Partons[c].m_szName );
 		    sFileName.append( ".pdf" );
 		    c1->Print(sFileName.c_str());
+		    if( pLeg )
+		      delete pLeg;
 		  }
 		  gErrorIgnoreLevel = OldErrLvl;
 		  //delete g_Mod;
@@ -2449,9 +2491,8 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 	      bDataChanged = true;
 
 	  // Make the prediction
-	  if( bParseOnly )
-	    bMadePrediction = true;
-	  else if( bDataChanged )
+	  CutChi thisChi( i, W2, Q2, bStrictCut );
+	  if( bDataChanged )
 	    {
 	      if( !dsAll.ApplyCut( W2, Q2, bStrictCut, SampleSize, bShowCut, m_TwiggySort ) )
 		{
@@ -2483,12 +2524,22 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 		  else
 		    {
 		      LOG( Sometimes, i << ": DataSets are in same order" << endl );
-		      CutChi thisChi;
-		      thisChi.iSeq = i;
-		      thisChi.W2 = W2;
-		      thisChi.Q2 = Q2;
-		      thisChi.bStrict = bStrictCut;
-		      bOK = MakeOnePrediction( dsAll, pszOutFilePrefix, thisChi, SampleSize, bShowCut );
+		      if( bParseOnly )
+		      {
+			const char *pszPrefix{ pszOutFilePrefix };
+			std::string Buffer;
+			if( NumSteps )
+			{
+			  Buffer = thisChi.SeqString( pszOutFilePrefix );
+			  pszPrefix = Buffer.c_str();
+			}
+			PlotDataSet( dsAll, pszPrefix, thisChi );
+			bMadePrediction = true;
+		      }
+		      else
+		      {
+			bOK = MakeOnePrediction( dsAll, pszOutFilePrefix, thisChi, SampleSize,
+						 bShowCut);
 		      if( bOK )
 			{
 			  bMadePrediction = true;
@@ -2496,6 +2547,7 @@ bool Cassandra::DataManager::MakePrediction(const char * pszOutFilePrefix,
 			}
 		      else
 			bNoError = false;
+		      }
 		    }
 		}
 	    }
@@ -2644,6 +2696,38 @@ int main(int argc, char * argv[])
   const char * pszPDFSet = nullptr;
   double dQChartScale = 3.;
 
+  // First get logging switches - so other switch settings are reflected in log
+  {
+    const std::string sCommandLine{ GetCommandLine( argc, argv ) };
+    std::string sLogFile;
+
+    for( int i = 1 ; i < argc ; i++ )
+    {
+      if( argv[i][0] == '-' && std::toupper( argv[i][1] ) == 'L' )
+      {
+	const char c = argv[i][2];
+	if( c == '-' || ( c >= '0' && c <= '9' ) )
+	{
+	  Global_Log_Level = (Cassandra::LogLevel) atoi( &argv[i][2] );
+	}
+	else if( c != 0 )
+	{
+	  pszOutFilePrefix = &argv[i][2];
+	  sLogFile = pszOutFilePrefix;
+	  sLogFile += ".log";
+	  Cassandra::Global_Log_File.reset( new std::ofstream( sLogFile.c_str(),
+							       ios_base::out | ios_base::trunc ) );
+	}
+	argv[i][0] = 0;
+      }
+    }
+    // Say what the invocation command line was
+    LOG( Always, sCommandLine << endl );
+    LOG( Always, "Log level set to " << ((int)Cassandra::Global_Log_Level) << endl );
+    if( !sLogFile.empty() )
+      LOG( Rarely, "Logging to file " << sLogFile << std::endl );
+  }
+
   for( int i = 1 ; iReturnValue == 0 && i < argc ; i++ )
     {
       if( argv[i][0] == '-' )
@@ -2696,26 +2780,6 @@ int main(int argc, char * argv[])
 
 	    case 'I':
 	      bParseOnly = true;
-	      break;
-
-	    case 'L':
-	      {
-		char c = argv[i][2];
-		if( c == '-' || ( c >= '0' && c <= '9' ) )
-		  {
-		    Global_Log_Level = (Cassandra::LogLevel) atoi( &argv[i][2] );
-		    LOG( Always, "Log level set to " << ((int)Cassandra::Global_Log_Level) << endl );
-		  }
-		else if( c != 0 )
-		  {
-		    pszOutFilePrefix = &argv[i][2];
-		    std::string sLogFile(pszOutFilePrefix);
-		    sLogFile += ".log";
-		    Cassandra::Global_Log_File.reset( new std::ofstream( sLogFile.c_str(),
-									 ios_base::out | ios_base::trunc ) );
-		    LOG( Rarely, "Logging to file " << sLogFile << std::endl );
-		  }
-	      }
 	      break;
 
 	    case 'M':
@@ -2940,6 +3004,12 @@ int main(int argc, char * argv[])
   LOG( Always, "X bin size set to " << xBinSize << endl );
   LOG( Always, "Q**2 bin size set to " << Q2BinSize << endl );
 
+  if( bParseOnly )
+  {
+    LOG( Always, "Parsing data files only" << endl );
+  }
+  else
+  {
   // Say what the model is
   if( bAdditive )
     { LOG( Always, "Additive" ); }
@@ -2984,6 +3054,7 @@ int main(int argc, char * argv[])
     else
       { LOG( Mostly, "Error: sort undefined" << endl ); }
   }
+  }
 
   // Okay, finally start running our model and making predictions
   Cassandra::DataManager myPred( Params, iNumReplicas, TwiggySort, iNumOutliers, pszModelPrefix,
@@ -2992,17 +3063,31 @@ int main(int argc, char * argv[])
     {
       if( argv[i][0] != 0 )
 	{
+	  struct stat Status;
 	  glob_t  myGlob;
 	  myGlob.gl_pathc = 0;
 	  myGlob.gl_pathv = NULL;
 	  myGlob.gl_offs = 0;
-	  if( glob( argv[i], 0, NULL, &myGlob ) == 0 )
+	  if( glob( argv[i], GLOB_BRACE | GLOB_TILDE, NULL, &myGlob ) == 0 )
 	    {
 	      for( size_t j = 0; j < myGlob.gl_pathc ; j++ )
-		if( !myPred.LoadData( myGlob.gl_pathv[j] ) )
-		  iReturnValue = -2;
+	      {
+		const bool bStatOK{ stat( myGlob.gl_pathv[j], &Status ) == 0 };
+		if( !bStatOK || Status.st_mode & S_IFDIR || !myPred.LoadData( myGlob.gl_pathv[j] ) )
+		{
+		  if( bStatOK && ( Status.st_mode & S_IFDIR ) )
+		    LOG( Always, "Ignoring directory " << myGlob.gl_pathv[j] << endl )
+		  else
+		  {
+		    LOG( Always, "Error loading " << myGlob.gl_pathv[j] << endl );
+		    iReturnValue = -2;
+		  }
+		}
+	      }
+	      globfree( &myGlob );
 	    }
-	  globfree( &myGlob );
+	  else
+	    LOG( Always, "Input file " << argv[i] << " invalid (ignoring)" << endl );
 	}
     }
 

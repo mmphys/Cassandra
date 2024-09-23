@@ -115,8 +115,21 @@ To see which SDKs are available (see [stack**overflow**](https://stackoverflow.c
     fi
     )
 
+#### 6. Build `Cassandra` and `Twiggy`
 
-# Running a prediction
+You can: run `make`, or use the `Xcode` GUI, or Xcode from the command-line:
+
+    xcodebuild ARCHS=arm64 ONLY_ACTIVE_ARCH=NO -configuration Release -scheme Cassandra
+    xcodebuild ARCHS=arm64 ONLY_ACTIVE_ARCH=NO -configuration Release -scheme Twiggy
+
+When building with Xcode, make links to the executables with:
+
+    A=$(xcodebuild -configuration Debug -showBuildSettings -scheme Cassandra | grep TARGET_BUILD_DIR | grep -oEi "\/.*")
+    ln -s "$A/Cassandra"
+    ln -s "$A/Twiggy"
+    unset A
+
+# Running a prediction / reproducing MSc thesis results
 
 There are two project executables:
 
@@ -163,10 +176,17 @@ Manually edit each file:
 
 ## **Twiggy** (pass 2)
 
-Edit the script `T.sh` to choose SLAC_TYPE, DATASET and TARGET, then run the script `T.sh`
+Run the script `T.sh` to produce `Results` from `Pass2`. This produces all of the results contained in the thesis.
 
-There are plenty of other parameters in the script you can change - once you are up-to-speed, e.g. you can specify a specific model (created in Pass1 at one specific cut) to run against every cut in pass 2 by uncommenting this line:
+There are plenty of parameters in the script (and far more options supported by the executables) which can be tweaked to run different predictions.
 
-`#MODEL_NUM="_5"`
+## Build MSc
 
-NB: There are more options in the scripts, and far more options supported by the executables.
+Run the script `MakeGraphs.sh` to create `Graphs` directory. These are links required by the thesis to the data produced in previous steps.
+
+Use `pdfLatex` to produce `MSc_Diss_Marshall_S1786208.pdf` from `MSc_Diss_Marshall_S1786208.tex`:
+
+    pdflatex MSc_Diss_Marshall_S1786208
+    bibtex MSc_Diss_Marshall_S1786208
+    pdflatex MSc_Diss_Marshall_S1786208
+    pdflatex MSc_Diss_Marshall_S1786208

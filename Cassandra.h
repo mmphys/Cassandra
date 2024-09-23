@@ -15,6 +15,7 @@
 # include <memory>
 # include <ostream>
 # include <sstream>
+# include <sys/stat.h>
 # include <typeinfo>
 # include <vector>
 
@@ -68,6 +69,9 @@ namespace Cassandra
   extern const char * pszSLAC;
   extern const char * pszJLAB;
   extern const char * pszBoNuS;
+
+  template <typename T>
+  std::istream& operator>>( std::istream& is, std::vector<T> &v );
 
   class Matrix2D
   {
@@ -609,5 +613,7 @@ namespace Cassandra
   std::ostream& operator<<(std::ostream& os, const Datum& d);
   // String describing strictness of cut
   const char * Cassandra_StrictString( bool bStrictCut );
+
+  std::string GetCommandLine( int argc, char * argv[] );
 }
 #endif

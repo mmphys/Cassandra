@@ -62,8 +62,32 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "&apos;-lResults/NNPDF/Proton_Low/PLN&apos; Pass2/Proton_Low_* Pass2/NNPDF/Proton_Low_* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -aa0.7,1 -ab0.6,2.3 -ac-0.6,-0.2 -ad-2.,-1.45 -wl5 -wu12.5 -n15"
+            argument = "-lResults/Debug/Debug Pass2/* Pass2/NNPDF/* -l4 -i"
             isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-lResults/NNPDF/Proton_Low/PLN Pass2/Proton_Low_* Pass2/NNPDF/Proton_Low_* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -aa0.7,1 -ab0.6,2.3 -ac-0.6,-0.2 -ad-2.,-1.45 -wl5 -wu12.5 -n15"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-lResults/NNPDF/Proton_All/PAN Pass2/Proton* Pass2/NNPDF/Proton* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -mResults/NNPDF/Proton_Low/PLN -wl5 -wu12.5 -n15"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-lResults/reanalyzed/Proton_Low/PLr Pass2/Proton_Low_* Pass2/reanalyzed/Proton_Low_* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -aa0.7,1 -ab0.6,2.3 -ac-0.6,-0.2 -ad-2.,-1.45 -wl3 -wu12.5 -n19"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-lResults/reanalyzed/Proton_All/PAr Pass2/Proton* Pass2/reanalyzed/Proton* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -mResults/reanalyzed/Proton_Low/PLr -wl3 -wu12.5 -n19"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-lResults/0/Proton_Low/PL0 Pass2/Proton_Low_* -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -aa0.7,1 -ab0.6,2.3 -ac-0.6,-0.2 -ad-2.,-1.45 -wl2.5 -wu3.7 -n12"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-lResults/reanalyzed/Proton_All_MJ/PArMJ Pass2/Proton_*_*_F2 Pass2/reanalyzed/Proton_*_*_F2 -l4 -bx0.05 -bq2 -o3 -x0 -p -ta1 -mResults/0/Proton_Low/PL0_4 -wl3 -wu12.5 -n19"
+            isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>
    </LaunchAction>

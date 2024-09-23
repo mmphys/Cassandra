@@ -2,6 +2,7 @@
 Pass1/
 Pass2/
 Results*/
+Graphs/
 .depend
 *.o
 Cassandra
@@ -13,6 +14,17 @@ test.pdf
 
 # Created by https://www.gitignore.io/api/xcode
 # Edit at https://www.gitignore.io/?templates=xcode
+
+# LaTeX
+MSc_Diss_Marshall_S1786208-blx.bib
+MSc_Diss_Marshall_S1786208.aux
+MSc_Diss_Marshall_S1786208.bbl
+MSc_Diss_Marshall_S1786208.blg
+MSc_Diss_Marshall_S1786208.lof
+MSc_Diss_Marshall_S1786208.log
+MSc_Diss_Marshall_S1786208.lot
+MSc_Diss_Marshall_S1786208.run.xml
+MSc_Diss_Marshall_S1786208.toc
 
 ### Xcode ###
 # Xcode

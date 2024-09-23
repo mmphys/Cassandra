@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 DATAROOT="Pass2"
 RESULTSROOT="Results"
@@ -7,21 +7,18 @@ RESULTSROOT="Results"
 #TARGET can be Proton, Deuteron or All (which processes all data)
 #SLAC_TYPE selects whether/(which version of) the SLAC data are included:
 # i.e. NNPDF, reanalyzed or 0 (Don't include any SLAC data)
+# PARSE_ONLY: If set, dataset will be plotted only (and no tar performed)
+# DIR_SUFFIX: If set, names an optional suffix for the output directory
 
 function Process()
 {
 #Validate Parameters (DATASET, TARGET and SLAC_TYPE)
-SetTarget=0
-if [ "$DATASET" == High ] || [ "$DATASET" == Low ]
+if [ "$DATASET" != High ] && [ "$DATASET" != Low ]
 then
-    ((SetTarget++))
-else
     DATASET=All
 fi
-if [ "$TARGET" == Proton ] || [ "$TARGET" == Deuteron ]
+if [ "$TARGET" != Proton ] && [ "$TARGET" != Deuteron ]
 then
-    ((SetTarget++))
-else
     TARGET=All
 fi
 if [ "$SLAC_TYPE" != reanalyzed ] && [ "$SLAC_TYPE" != NNPDF ]
@@ -29,10 +26,14 @@ then
     SLAC_TYPE=0
 fi
 
-local PARAMS="-l4 -bx0.05 -bq2 -o3 -x0 -p"
+local CUTOFF PARAMS="-l4"
+
+if [ -v PARSE_ONLY ]; then
+  PARAMS+=" -i"
+else
+  PARAMS+=" -bx0.05 -bq2 -o3 -x0 -p"
 
 # Select an appropriate cutoff
-local CUTOFF
 if [ "$DATASET" == High ]
 then
     CUTOFF="-wl12.5 -wu17 -n9"
@@ -43,7 +44,7 @@ else
     elif [ "$SLAC_TYPE" == reanalyzed ]
     then
 	CUTOFF="-wl3 -wu12.5 -n19"
-    else
+    else #NNPDF
 	CUTOFF="-wl5 -wu12.5 -n15"
 	#CUTOFF="-wl5 -wu12.5 -n30"
 	#CUTOFF="-wl1 -wu12.5 -n46"
@@ -51,6 +52,7 @@ else
 fi
 
 # Select an appropriate model
+if ! [ -v MODEL ]; then
 local MODEL
 if [ "$DATASET" == Low ]
 then
@@ -99,53 +101,62 @@ else
     MODEL="-ta1 -m${RESULTSROOT}/${SLAC_TYPE}/${TARGET}_Low/${TARGET:0:1}L${SLAC_TYPE:0:1}${MODEL_NUM}"
     # This stops the graphs blowing up
     #CUTOFF="${CUTOFF} -xc0.11"
-fi
+fi # DATASET
+fi # MODEL
+fi # PARSE_ONLY
 
 # Translate parameters to source files
-local DATA_FILE_NAME
-if [ $SetTarget -eq 2 ]
-then
-   DATA_FILE_NAME="${TARGET}_${DATASET}_*"
-elif [ $SetTarget -eq 0 ]
-then
-     DATA_FILE_NAME="*"
-elif [ "$DATASET" == All ]
-then
-     DATA_FILE_NAME="${TARGET}*"
-else
-     DATA_FILE_NAME="*_${DATASET}*"
-fi
+local DATA_FILE_NAME="'"
+[ "$TARGET" == All ] && DATA_FILE_NAME+='*' || DATA_FILE_NAME+="$TARGET"
+DATA_FILE_NAME+='_'
+[ "$DATASET" == All ] && DATA_FILE_NAME+='*' || DATA_FILE_NAME+="$DATASET"
+DATA_FILE_NAME+="_*_F2'"
 
 local DATA="$DATAROOT/${DATA_FILE_NAME}"
 [ $SLAC_TYPE != 0 ] && DATA+=" $DATAROOT/${SLAC_TYPE}/${DATA_FILE_NAME}"
 
 # Make sure the results directory exists
-local Dir="$SLAC_TYPE/${TARGET}_${DATASET}"
+local Dir="$SLAC_TYPE"
+[ -v PARSE_ONLY ] || Dir+="/${TARGET}_${DATASET}"
+[ -n "$DIR_SUFFIX" ] && Dir+="_$DIR_SUFFIX"
 mkdir -p "$RESULTSROOT/$Dir"
 
 # Now run
-local Combo="${TARGET:0:1}${DATASET:0:1}${SLAC_TYPE:0:1}"
+local Combo="${TARGET:0:1}${DATASET:0:1}${SLAC_TYPE:0:1}${DIR_SUFFIX}"
 local File="$RESULTSROOT/$Dir/$Combo"
 echo "Performing Combined $SLAC_TYPE $TARGET $DATASET run"
 local Cmd="./Twiggy '-l$File' $DATA $PARAMS $MODEL $CUTOFF"
 echo " $Cmd"
 eval "$Cmd"
+if ! [ -v PARSE_ONLY ]; then
 (
   cd "${RESULTSROOT}"
   tar -czf "$Combo.tar" "$Dir/"
 )
+fi
+}
+
+function DoDataSet()
+{
+  local DATASETS="$1"
+  local TARGETS="$2"; (($#<2)) && TARGETS='Proton Deuteron'
+  local SLAC_TYPES="$3"; (($#<3)) && SLAC_TYPES='NNPDF reanalyzed 0'
+  local DATASET SLAC_TYPE TARGET
+  for DATASET in $DATASETS; do
+  for TARGET in $TARGETS; do
+  for SLAC_TYPE in $SLAC_TYPES; do
+    Process &
+  done
+  done
+  done
 }
 
 # Main
-
-for DATASET in Low High All
-do
-for TARGET in Proton Deuteron #All
-do
-for SLAC_TYPE in NNPDF reanalyzed 0
-do
-  Process &
-done
-done
-done
+# The models created using the low data set are reused by the High (not sure about All)
+PARSE_ONLY= DoDataSet 'All High Low' 'Proton Deuteron All'
+DoDataSet Low
+wait
+DoDataSet 'All High'
+DIR_SUFFIX=MJ MODEL="-ta1 -m${RESULTSROOT}/0/Proton_Low/PL0_4" DoDataSet All Proton reanalyzed
+DIR_SUFFIX=MJ MODEL="-ta1 -m${RESULTSROOT}/0/Deuteron_Low/DL0_4" DoDataSet All Deuteron reanalyzed
 wait
